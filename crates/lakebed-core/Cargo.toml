@@ -1,0 +1,17 @@
+[package]
+name = "lakebed-core"
+description = "The I/O boundary shared by lakebed's table format crates: a host trait for object stores, clocks, and randomness"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+[lints]
+workspace = true
