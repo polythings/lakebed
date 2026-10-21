@@ -1,5 +1,5 @@
 [package]
-name = "lakebed-iceberg"
+name = "lakekit-iceberg"
 description = "Apache Iceberg table metadata, manifests and commits without I/O of its own, for WebAssembly and native"
 readme = "README.md"
 version.workspace = true
@@ -20,7 +20,7 @@ arrow = ["dep:arrow-schema"]
 parquet-stats = ["dep:parquet"]
 
 [dependencies]
-lakebed-core.workspace = true
+lakekit-core.workspace = true
 apache-avro.workspace = true
 serde_json.workspace = true
 futures-util.workspace = true

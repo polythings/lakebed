@@ -1,7 +1,7 @@
-# lakebed-iceberg
+# lakekit-iceberg
 
 [Apache Iceberg](https://iceberg.apache.org) tables read and written without I/O of their own, through a
-[`lakebed_core::Host`](../lakebed-core), so they work in WebAssembly (browsers, Cloudflare Workers) as well as natively.
+[`lakekit_core::Host`](../lakekit-core), so they work in WebAssembly (browsers, Cloudflare Workers) as well as natively.
 
 | Feature | What it adds |
 |---|---|
@@ -10,6 +10,6 @@
 | `arrow` | The schema as an Arrow schema, with field ids |
 | `parquet-stats` | A data file's Iceberg statistics (counts, bounds, split offsets) from its Parquet footer |
 
-The tests commit to one table with lakebed and iceberg-rust in turn, each reading what the other wrote.
+The tests commit to one table with lakekit and iceberg-rust in turn, each reading what the other wrote.
 
 Apache License 2.0.

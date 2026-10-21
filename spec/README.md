@@ -1,6 +1,6 @@
 # Specs
 
-lakebed's design, laid out like Timelake's and lakeglass's. Start here, people and agents alike.
+lakekit's design, laid out like Timelake's and lakeglass's. Start here, people and agents alike.
 
 - **Specs** (`NNNN-name.md`): one feature each, with the same template ([TEMPLATE.md](TEMPLATE.md)). A spec says what
   the feature does and why, what is still open (as GitHub issues), how far it is built, and the releases that changed

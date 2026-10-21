@@ -1596,22 +1596,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "lakebed"
+name = "lakekit"
 version = "0.1.0"
 dependencies = [
- "lakebed-core",
- "lakebed-iceberg",
+ "lakekit-core",
+ "lakekit-iceberg",
 ]
 
 [[package]]
-name = "lakebed-core"
+name = "lakekit-core"
 version = "0.1.0"
 dependencies = [
  "thiserror",
 ]
 
 [[package]]
-name = "lakebed-iceberg"
+name = "lakekit-iceberg"
 version = "0.1.0"
 dependencies = [
  "apache-avro 0.22.0",
@@ -1621,7 +1621,7 @@ dependencies = [
  "futures",
  "futures-util",
  "iceberg",
- "lakebed-core",
+ "lakekit-core",
  "parquet",
  "serde_json",
  "tokio",

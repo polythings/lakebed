@@ -3,7 +3,7 @@
 //! them, with `version-hint.text` naming the newest for stores that can't list. Tables a catalog
 //! names with other file names load with [`Table::from_metadata_file`].
 
-use lakebed_core::Host;
+use lakekit_core::Host;
 
 use crate::manifest::{Entry, ManifestFile, Status, read_manifest, read_manifest_list};
 use crate::metadata::Metadata;
@@ -123,7 +123,7 @@ impl Table {
 
 #[cfg(test)]
 mod tests {
-    use lakebed_core::MemoryHost;
+    use lakekit_core::MemoryHost;
 
     use super::*;
     use crate::block_on;

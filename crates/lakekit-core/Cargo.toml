@@ -1,6 +1,6 @@
 [package]
-name = "lakebed-core"
-description = "The I/O boundary shared by lakebed's table format crates: a host trait for object stores, clocks, and randomness"
+name = "lakekit-core"
+description = "The I/O boundary shared by lakekit's table format crates: a host trait for object stores, clocks, and randomness"
 readme = "README.md"
 version.workspace = true
 edition.workspace = true

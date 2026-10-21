@@ -29,7 +29,7 @@ as "spec N", linked to their files.
 
 ## Open questions and issues
 
-- [#N](https://github.com/polythings/lakebed/issues/N) Each open question or task is an issue.
+- [#N](https://github.com/polythings/lakekit/issues/N) Each open question or task is an issue.
 
 ## History
 
