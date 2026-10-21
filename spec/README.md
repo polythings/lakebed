@@ -28,7 +28,7 @@ lakekit's design, laid out like Timelake's and lakeglass's. Start here, people a
 
 ## Index
 
-4 specs: 2 in progress, 2 done. Decisions D1–D16.
+6 specs: 2 in progress, 2 done, 2 planned. Decisions D1–D21.
 
 | # | Spec | Status | Updated |
 |---:|---|---|---|
@@ -36,9 +36,12 @@ lakekit's design, laid out like Timelake's and lakeglass's. Start here, people a
 | 2 | [One crate per format](0002-formats.md) | In progress | 2026-10-21 |
 | 3 | [Apache Iceberg](0003-iceberg.md) | In progress | 2026-10-20 |
 | 4 | [Store adapters](0004-store-adapters.md) | Done | 2026-10-21 |
+| 5 | [A common table view](0005-table-view.md) | Planned | 2026-10-21 |
+| 6 | [Data file formats](0006-file-formats.md) | Planned | 2026-10-21 |
 
 ## Milestones
 
 | Milestone | Status |
 |---|---|
 | [0.1: Iceberg for Timelake and lakeglass](milestones/v0-1.md) | In progress |
+| [0.2: Any table format, any file format](milestones/v0-2.md) | Planned |
