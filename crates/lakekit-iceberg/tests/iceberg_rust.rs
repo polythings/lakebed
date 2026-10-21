@@ -21,7 +21,7 @@ use iceberg::spec::{
 use iceberg::transaction::{ApplyTransactionAction, Transaction};
 use iceberg::writer::file_writer::{FileWriter as _, FileWriterBuilder, ParquetWriterBuilder};
 use iceberg::{Catalog, CatalogBuilder, MemoryCatalog, NamespaceIdent, TableCreation, TableIdent};
-use lakekit_core::{Listed, MemoryUpload, SeededRandom, Resources, Store, StoreError as Error, TestClock};
+use lakekit_core::{Listed, MemoryUpload, Resources, SeededRandom, Store, StoreError as Error, TestClock};
 use lakekit_iceberg::stats::ParquetStats;
 use lakekit_iceberg::{Change, CommitOptions, DataFile, Datum, Entry, NoHooks, Status, Table, commit};
 use parquet::arrow::ArrowWriter;

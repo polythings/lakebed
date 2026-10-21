@@ -612,7 +612,12 @@ mod tests {
             base.metadata.ancestors().iter().any(|s| s.summary.get("batch").map(String::as_str) == Some(self.0))
         }
 
-        fn extra(&mut self, _: &MemoryResources, base: &Table, snapshot_id: i64) -> impl Future<Output = Result<Extra>> {
+        fn extra(
+            &mut self,
+            _: &MemoryResources,
+            base: &Table,
+            snapshot_id: i64,
+        ) -> impl Future<Output = Result<Extra>> {
             let uri = format!("{}/metadata/extra-{snapshot_id}", base.location);
             let summary =
                 HashMap::from([("batch".to_string(), self.0.to_string()), ("extra".to_string(), uri.clone())]);
