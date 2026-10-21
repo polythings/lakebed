@@ -1,21 +1,21 @@
 use loko_clock::{Clock, HasClock, TestClock};
-use loko_macros::Provides;
 use loko_random::{HasRandom, Random, SeededRandom};
 use loko_store::{HasStore, MemoryStore, Store};
 
 /// A store, a clock, and a random source as one value, for APIs that need all three (commits):
 /// `Resources::new(ObjectStoreAdapter::new(…), TokioClock, OsRandom)`. Any type that is all three
-/// works as well: a JavaScript host, or an application's own `#[derive(loko::Provides)]` struct.
-#[derive(Clone, Debug, Default, Provides)]
+/// works as well: a JavaScript host, or an application's own `#[loko::bundle]` struct.
+#[loko_macros::bundle]
+#[derive(Clone, Debug, Default)]
 pub struct Resources<S, C, R> {
     /// The store.
-    #[provides(Store)]
+    #[loko_macros::has(Store)]
     pub store: S,
     /// The clock.
-    #[provides(Clock)]
+    #[loko_macros::has(Clock)]
     pub clock: C,
     /// The random source.
-    #[provides(Random)]
+    #[loko_macros::has(Random)]
     pub random: R,
 }
 

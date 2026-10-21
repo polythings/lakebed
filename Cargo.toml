@@ -16,11 +16,11 @@ lakekit-core = { path = "crates/lakekit-core", version = "0.1.0" }
 lakekit-iceberg = { path = "crates/lakekit-iceberg", version = "0.1.0", default-features = false }
 # loko provides the Store, Clock, and Random resources. From git until loko 0.2.0 is on crates.io
 # (polythings/loko#1); publishing uses the version.
-loko-store = { git = "https://github.com/polythings/loko", rev = "112fb3e81114aef2c6a060eb1c00366cf4927f5b", version = "0.2.0" }
-loko-clock = { git = "https://github.com/polythings/loko", rev = "112fb3e81114aef2c6a060eb1c00366cf4927f5b", version = "0.2.0" }
-loko-random = { git = "https://github.com/polythings/loko", rev = "112fb3e81114aef2c6a060eb1c00366cf4927f5b", version = "0.2.0" }
-loko-macros = { git = "https://github.com/polythings/loko", rev = "112fb3e81114aef2c6a060eb1c00366cf4927f5b", version = "0.2.0" }
-loko-object-store = { git = "https://github.com/polythings/loko", rev = "112fb3e81114aef2c6a060eb1c00366cf4927f5b", version = "0.2.0" }
+loko-store = { git = "https://github.com/polythings/loko", rev = "4f258adbf5c44c6c6d499ea9440ba1dda84e2ddc", version = "0.2.0" }
+loko-clock = { git = "https://github.com/polythings/loko", rev = "4f258adbf5c44c6c6d499ea9440ba1dda84e2ddc", version = "0.2.0" }
+loko-random = { git = "https://github.com/polythings/loko", rev = "4f258adbf5c44c6c6d499ea9440ba1dda84e2ddc", version = "0.2.0" }
+loko-macros = { git = "https://github.com/polythings/loko", rev = "4f258adbf5c44c6c6d499ea9440ba1dda84e2ddc", version = "0.2.0" }
+loko-object-store = { git = "https://github.com/polythings/loko", rev = "4f258adbf5c44c6c6d499ea9440ba1dda84e2ddc", version = "0.2.0" }
 object_store = { version = "0.14", default-features = false }
 url = "2"
 thiserror = "2"
