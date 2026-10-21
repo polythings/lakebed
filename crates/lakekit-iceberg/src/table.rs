@@ -138,7 +138,7 @@ mod tests {
 
     #[test]
     fn loads_the_newest_version() {
-        let store = MemoryStore::new(0);
+        let store = MemoryStore::new();
         let meta = |n: u8| format!(r#"{{"format-version": 2, "location": "memory://t", "last-sequence-number": {n}}}"#);
         block_on(async {
             assert!(matches!(Table::load(&store, "memory://t").await, Err(Error::NotFound(_))));

@@ -50,7 +50,7 @@ ideas we took.
 ## Tests
 
 - **A bug fix starts with a test that fails**, then the fix.
-- **Tests run offline**, against `MemoryStore` or a store over the reference implementation's in-memory storage.
+- **Tests run offline**, against `MemoryServices` or a store over the reference implementation's in-memory storage.
 - **Interop:** writers are tested against the format's reference reader, and readers against the reference writer.
 
 ## Checks

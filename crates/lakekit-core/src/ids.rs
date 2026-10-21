@@ -22,12 +22,14 @@ pub fn uuid_v7(source: &(impl Clock + Random)) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use super::*;
-    use crate::MemoryStore;
+    use crate::MemoryServices;
 
     #[test]
     fn uuids_are_well_formed() {
-        let source = MemoryStore::new(1_767_225_600_000);
+        let source = MemoryServices::at_ms(1_767_225_600_000);
         let v4 = uuid_v4(&source);
         let v7 = uuid_v7(&source);
         for (u, version) in [(&v4, '4'), (&v7, '7')] {
@@ -36,7 +38,7 @@ mod tests {
             assert!(matches!(u.chars().nth(19), Some('8' | '9' | 'a' | 'b')));
         }
         // Version 7 starts with the time, so later ones sort later.
-        source.advance(1);
+        source.clock.advance(Duration::from_millis(1));
         assert!(uuid_v7(&source) > v7);
     }
 }

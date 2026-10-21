@@ -11,7 +11,8 @@ never code: every line of lakekit is our own. How we credit is in [CONTRIBUTING.
 | [iceberg-rust](https://github.com/apache/iceberg-rust) | Apache-2.0 | The reference the interop tests check against (a test dependency only) |
 | [Apache Avro](https://avro.apache.org) (`apache-avro`) | Apache-2.0 | Reading and writing manifests and manifest lists |
 | [arrow-rs](https://github.com/apache/arrow-rs) (`arrow-schema`, `parquet`) | Apache-2.0 | Arrow schemas; Parquet footers for statistics |
-| [object_store](https://github.com/apache/arrow-rs-object-store) | Apache-2.0 / MIT | The stores `lakekit-object-store` adapts |
+| [loko](https://github.com/polythings/loko) | Apache-2.0 | The `Store`, `Clock`, and `Random` services, and the `object_store` adapter |
+| [object_store](https://github.com/apache/arrow-rs-object-store) | Apache-2.0 / MIT | The stores `loko-object-store` adapts (re-exported by `lakekit`) |
 | [uuid](https://github.com/uuid-rs/uuid) | Apache-2.0 / MIT | UUIDs for file names, from a `Random` and a `Clock` |
 
 ## Ideas

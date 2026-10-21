@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/lakekit-core", "crates/lakekit-iceberg", "crates/lakekit-object-store", "crates/lakekit"]
+members = ["crates/lakekit-core", "crates/lakekit-iceberg", "crates/lakekit"]
 
 [workspace.package]
 version = "0.1.0"
@@ -14,7 +14,13 @@ categories = ["database-implementations", "wasm"]
 [workspace.dependencies]
 lakekit-core = { path = "crates/lakekit-core", version = "0.1.0" }
 lakekit-iceberg = { path = "crates/lakekit-iceberg", version = "0.1.0", default-features = false }
-lakekit-object-store = { path = "crates/lakekit-object-store", version = "0.1.0" }
+# loko provides the Store, Clock, and Random services. From git until loko 0.2.0 is on crates.io
+# (polythings/loko#1); publishing uses the version.
+loko-store = { git = "https://github.com/polythings/loko", rev = "3972fdd0f2dc863328c38048583f3066cba939c4", version = "0.2.0" }
+loko-clock = { git = "https://github.com/polythings/loko", rev = "3972fdd0f2dc863328c38048583f3066cba939c4", version = "0.2.0" }
+loko-random = { git = "https://github.com/polythings/loko", rev = "3972fdd0f2dc863328c38048583f3066cba939c4", version = "0.2.0" }
+loko-macros = { git = "https://github.com/polythings/loko", rev = "3972fdd0f2dc863328c38048583f3066cba939c4", version = "0.2.0" }
+loko-object-store = { git = "https://github.com/polythings/loko", rev = "3972fdd0f2dc863328c38048583f3066cba939c4", version = "0.2.0" }
 object_store = { version = "0.14", default-features = false }
 url = "2"
 thiserror = "2"

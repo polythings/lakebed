@@ -36,6 +36,9 @@ arrow-array = "58"
 arrow-schema.workspace = true
 bytes = "1"
 futures = "0.3"
+lakekit-core = { workspace = true, features = ["tokio", "getrandom"] }
+loko-object-store.workspace = true
+object_store.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true

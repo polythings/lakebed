@@ -28,3 +28,31 @@ pub enum Error {
 
 /// `Result` with [`Error`].
 pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+impl From<loko_store::Error> for Error {
+    fn from(e: loko_store::Error) -> Self {
+        match e {
+            loko_store::Error::NotFound(m) => Error::NotFound(m),
+            loko_store::Error::Invalid(m) => Error::Invalid(m),
+            loko_store::Error::Unsupported(m) => Error::Unsupported(m),
+            other => Error::Store(match other {
+                loko_store::Error::Store(m) => m,
+                other => other.to_string(),
+            }),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn store_errors_keep_their_kind() {
+        let from = |e| Error::from(e).to_string();
+        assert_eq!(from(loko_store::Error::NotFound("a".into())), "not found: a");
+        assert_eq!(from(loko_store::Error::Invalid("b".into())), "invalid: b");
+        assert_eq!(from(loko_store::Error::Unsupported("c".into())), "unsupported: c");
+        assert_eq!(from(loko_store::Error::Store("d".into())), "store: d");
+    }
+}

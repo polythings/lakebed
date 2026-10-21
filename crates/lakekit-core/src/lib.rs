@@ -1,21 +1,22 @@
 //! The I/O boundary shared by lakekit's table format crates. Format crates do no I/O of their own:
-//! they read and write through a [`Store`] the application implements over its objects (an
-//! `object_store` client natively, `fetch` or an R2 binding in WebAssembly), and take the time from
-//! a [`Clock`] and random numbers from a [`Random`], so they build for `wasm32-unknown-unknown` and
-//! native targets alike.
+//! they read and write through a [`Store`] the application supplies (an `object_store` client
+//! natively, `fetch` or an R2 binding in WebAssembly), and take the time from a [`Clock`] and random
+//! numbers from a [`Random`], so they build for `wasm32-unknown-unknown` and native targets alike.
+//! The three are [loko](https://github.com/polythings/loko)'s services, re-exported here.
 //!
 //! - [`Store`]: get, ranged get, put, put-if-absent (the commit primitive), multipart upload, list,
-//!   delete.
+//!   delete. `loko-object-store` implements it over `object_store`.
 //! - [`Clock`]: the time and a timer. `TokioClock` (feature `tokio`) is a native one.
 //! - [`Random`]: random numbers. `OsRandom` (feature `getrandom`) is a native one.
-//! - [`Services`]: a store, a clock, and a random source as one value, for APIs that need all three.
-//! - [`MemoryStore`]: all three, in memory, for tests.
+//! - [`Services`]: a store, a clock, and a random source as one value, for APIs that need all three;
+//!   [`MemoryServices`] is all three in memory, for tests.
+//! - [`Error`]: one error type for the format crates, converted from the store's.
 //!
 //! ```
 //! use lakekit_core::{MemoryStore, Store};
 //!
 //! # block_on(async {
-//! let store = MemoryStore::new(0);
+//! let store = MemoryStore::new();
 //! store.put("memory://t/a", b"x".to_vec()).await?;
 //! assert!(store.exists("memory://t/a").await?);
 //! # Ok::<(), lakekit_core::Error>(())
@@ -28,22 +29,17 @@
 //! # }
 //! ```
 
-mod clock;
 mod error;
 mod ids;
-mod memory;
-mod random;
 mod services;
-mod store;
 
-pub use clock::Clock;
-#[cfg(all(feature = "tokio", not(target_arch = "wasm32")))]
-pub use clock::TokioClock;
 pub use error::{Error, Result};
 pub use ids::{uuid_v4, uuid_v7};
-pub use memory::{MemoryStore, MemoryUpload};
-#[cfg(all(feature = "getrandom", not(target_arch = "wasm32")))]
-pub use random::OsRandom;
-pub use random::Random;
-pub use services::Services;
-pub use store::{Listed, Store, Upload};
+#[cfg(all(feature = "tokio", not(target_arch = "wasm32")))]
+pub use loko_clock::TokioClock;
+pub use loko_clock::{Clock, HasClock, TestClock};
+#[cfg(all(feature = "getrandom", not(all(target_arch = "wasm32", target_os = "unknown"))))]
+pub use loko_random::OsRandom;
+pub use loko_random::{HasRandom, Random, SeededRandom};
+pub use loko_store::{Error as StoreError, HasStore, Listed, MemoryStore, MemoryUpload, Store, Upload};
+pub use services::{MemoryServices, Services};

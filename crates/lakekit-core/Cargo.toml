@@ -1,6 +1,6 @@
 [package]
 name = "lakekit-core"
-description = "The I/O boundary shared by lakekit's table format crates: traits for objects, the clock, and randomness"
+description = "The I/O boundary shared by lakekit's table format crates: loko's Store, Clock, and Random, and one error type"
 readme = "README.md"
 version.workspace = true
 edition.workspace = true
@@ -13,20 +13,17 @@ categories.workspace = true
 [features]
 default = []
 # `TokioClock`: the system clock and tokio's timer. Native targets only.
-tokio = ["dep:tokio"]
-# `OsRandom`: the operating system's random number generator. Native targets only.
-getrandom = ["dep:getrandom"]
+tokio = ["loko-clock/tokio"]
+# `OsRandom`: the operating system's random number generator. Native targets and WASI.
+getrandom = ["loko-random/getrandom"]
 
 [dependencies]
+loko-store.workspace = true
+loko-clock.workspace = true
+loko-random.workspace = true
+loko-macros.workspace = true
 thiserror.workspace = true
 uuid = { version = "1", default-features = false }
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { workspace = true, features = ["time"], optional = true }
-getrandom = { version = "0.4", optional = true }
-
-[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { workspace = true, features = ["macros", "rt", "time"] }
 
 [package.metadata.docs.rs]
 all-features = true

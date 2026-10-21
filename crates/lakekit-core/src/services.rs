@@ -1,17 +1,21 @@
-use std::future::Future;
-
-use crate::{Clock, Listed, Random, Result, Store};
+use loko_clock::{Clock, HasClock, TestClock};
+use loko_macros::Services;
+use loko_random::{HasRandom, Random, SeededRandom};
+use loko_store::{HasStore, MemoryStore, Store};
 
 /// A store, a clock, and a random source as one value, for APIs that need all three (commits):
-/// `Services::new(ObjectStoreAdapter::new(…), TokioClock, OsRandom)`. A type that is all three (a
-/// JavaScript host, [`MemoryStore`](crate::MemoryStore)) needs no wrapper.
-#[derive(Clone, Debug, Default)]
+/// `Services::new(ObjectStoreAdapter::new(…), TokioClock, OsRandom)`. Any type that is all three
+/// works as well: a JavaScript host, or an application's own `#[derive(loko::Services)]` struct.
+#[derive(Clone, Debug, Default, Services)]
 pub struct Services<S, C, R> {
     /// The store.
+    #[service(Store)]
     pub store: S,
     /// The clock.
+    #[service(Clock)]
     pub clock: C,
     /// The random source.
+    #[service(Random)]
     pub random: R,
 }
 
@@ -22,54 +26,12 @@ impl<S, C, R> Services<S, C, R> {
     }
 }
 
-impl<S: Store, C, R> Store for Services<S, C, R> {
-    type Upload = S::Upload;
+/// Everything in memory, for tests: a [`MemoryStore`], a [`TestClock`], and a [`SeededRandom`].
+pub type MemoryServices = Services<MemoryStore, TestClock, SeededRandom>;
 
-    fn get(&self, uri: &str) -> impl Future<Output = Result<Option<Vec<u8>>>> {
-        self.store.get(uri)
-    }
-
-    fn get_range(&self, uri: &str, start: u64, len: u64) -> impl Future<Output = Result<Vec<u8>>> {
-        self.store.get_range(uri, start, len)
-    }
-
-    fn exists(&self, uri: &str) -> impl Future<Output = Result<bool>> {
-        self.store.exists(uri)
-    }
-
-    fn put(&self, uri: &str, bytes: Vec<u8>) -> impl Future<Output = Result<()>> {
-        self.store.put(uri, bytes)
-    }
-
-    fn put_if_absent(&self, uri: &str, bytes: Vec<u8>) -> impl Future<Output = Result<bool>> {
-        self.store.put_if_absent(uri, bytes)
-    }
-
-    fn upload(&self, uri: &str) -> impl Future<Output = Result<Self::Upload>> {
-        self.store.upload(uri)
-    }
-
-    fn list(&self, prefix: &str) -> impl Future<Output = Result<Vec<Listed>>> {
-        self.store.list(prefix)
-    }
-
-    fn delete(&self, uris: &[String]) -> impl Future<Output = Result<()>> {
-        self.store.delete(uris)
-    }
-}
-
-impl<S, C: Clock, R> Clock for Services<S, C, R> {
-    fn now_ms(&self) -> i64 {
-        self.clock.now_ms()
-    }
-
-    fn sleep(&self, ms: u64) -> impl Future<Output = ()> {
-        self.clock.sleep(ms)
-    }
-}
-
-impl<S, C, R: Random> Random for Services<S, C, R> {
-    fn next_u64(&self) -> u64 {
-        self.random.next_u64()
+impl MemoryServices {
+    /// An empty store, the clock at `now_ms` milliseconds after the Unix epoch, and seed 0.
+    pub fn at_ms(now_ms: i64) -> Self {
+        Self::new(MemoryStore::new(), TestClock::at_ms(now_ms), SeededRandom::new(0))
     }
 }

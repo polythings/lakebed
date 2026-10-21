@@ -21,7 +21,7 @@ use iceberg::spec::{
 use iceberg::transaction::{ApplyTransactionAction, Transaction};
 use iceberg::writer::file_writer::{FileWriter as _, FileWriterBuilder, ParquetWriterBuilder};
 use iceberg::{Catalog, CatalogBuilder, MemoryCatalog, NamespaceIdent, TableCreation, TableIdent};
-use lakekit_core::{Error, Listed, MemoryStore, MemoryUpload, Services, Store};
+use lakekit_core::{Listed, MemoryUpload, SeededRandom, Services, Store, StoreError as Error, TestClock};
 use lakekit_iceberg::stats::ParquetStats;
 use lakekit_iceberg::{Change, CommitOptions, DataFile, Datum, Entry, NoHooks, Status, Table, commit};
 use parquet::arrow::ArrowWriter;
@@ -38,8 +38,11 @@ struct IoStore {
     io: FileIO,
 }
 
-/// The store with a [`MemoryStore`]'s clock and random numbers.
-type TestStore = Services<IoStore, MemoryStore, MemoryStore>;
+/// The store with a test clock and seeded random numbers.
+type TestStore = Services<IoStore, TestClock, SeededRandom>;
+
+/// The store's results.
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 fn store(e: impl std::fmt::Display) -> Error {
     Error::Store(e.to_string())
@@ -48,45 +51,45 @@ fn store(e: impl std::fmt::Display) -> Error {
 impl Store for IoStore {
     type Upload = MemoryUpload;
 
-    async fn get(&self, uri: &str) -> lakekit_core::Result<Option<Vec<u8>>> {
+    async fn get(&self, uri: &str) -> Result<Option<Vec<u8>>> {
         if !self.io.exists(uri).await.map_err(store)? {
             return Ok(None);
         }
         Ok(Some(self.io.new_input(uri).map_err(store)?.read().await.map_err(store)?.to_vec()))
     }
 
-    async fn get_range(&self, uri: &str, start: u64, len: u64) -> lakekit_core::Result<Vec<u8>> {
+    async fn get_range(&self, uri: &str, start: u64, len: u64) -> Result<Vec<u8>> {
         let bytes = self.get(uri).await?.ok_or_else(|| Error::NotFound(uri.to_string()))?;
         let start = usize::try_from(start).map_err(store)?.min(bytes.len());
         let end = start.saturating_add(usize::try_from(len).map_err(store)?).min(bytes.len());
         Ok(bytes[start..end].to_vec())
     }
 
-    async fn exists(&self, uri: &str) -> lakekit_core::Result<bool> {
+    async fn exists(&self, uri: &str) -> Result<bool> {
         self.io.exists(uri).await.map_err(store)
     }
 
-    async fn put(&self, uri: &str, bytes: Vec<u8>) -> lakekit_core::Result<()> {
+    async fn put(&self, uri: &str, bytes: Vec<u8>) -> Result<()> {
         self.io.new_output(uri).map_err(store)?.write(Bytes::from(bytes)).await.map_err(store)
     }
 
     /// The tests run one writer at a time, so checking first is enough.
-    async fn put_if_absent(&self, uri: &str, bytes: Vec<u8>) -> lakekit_core::Result<bool> {
+    async fn put_if_absent(&self, uri: &str, bytes: Vec<u8>) -> Result<bool> {
         if self.exists(uri).await? {
             return Ok(false);
         }
         self.put(uri, bytes).await.map(|()| true)
     }
 
-    fn upload(&self, _: &str) -> impl Future<Output = lakekit_core::Result<MemoryUpload>> {
+    fn upload(&self, _: &str) -> impl Future<Output = Result<MemoryUpload>> {
         ready(Err(Error::Unsupported("uploads".into())))
     }
 
-    fn list(&self, _: &str) -> impl Future<Output = lakekit_core::Result<Vec<Listed>>> {
+    fn list(&self, _: &str) -> impl Future<Output = Result<Vec<Listed>>> {
         ready(Err(Error::Unsupported("listing".into())))
     }
 
-    async fn delete(&self, uris: &[String]) -> lakekit_core::Result<()> {
+    async fn delete(&self, uris: &[String]) -> Result<()> {
         for uri in uris {
             self.io.delete(uri).await.map_err(store)?;
         }
@@ -228,8 +231,7 @@ async fn tables_round_trip_between_lakekit_and_iceberg_rust() {
         Some(UnboundPartitionSpec::builder().add_partition_field(1, "time_day", IceTransform::Day).unwrap().build());
     let table = catalog.create_table(&ns, creation).await.unwrap();
     let io = table.file_io().clone();
-    let memory = MemoryStore::new(T0 / 1000);
-    let store = Services::new(IoStore { io: io.clone() }, memory.clone(), memory);
+    let store = Services::new(IoStore { io: io.clone() }, TestClock::at_ms(T0 / 1000), SeededRandom::new(0));
     let arrow = Arc::new(iceberg::arrow::schema_to_arrow_schema(table.metadata().current_schema()).unwrap());
 
     // iceberg-rust appends; lakekit reads the file as iceberg-rust records it.
