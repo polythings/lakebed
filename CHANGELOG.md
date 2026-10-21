@@ -8,8 +8,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 ### Added
 
 - `lakekit-core`: loko's `Store`, `Clock`, and `Random` services with their test and native implementations
-  (`TokioClock` with feature `tokio`, `OsRandom` with feature `getrandom`); `Services` to pass the three as one;
-  `MemoryServices` for tests; one `Error` type, which a store's error converts into.
+  (`TokioClock` with feature `tokio`, `OsRandom` with feature `getrandom`); `Services`, the three borrowed
+  together for commits; one `Error` type, which a store's error converts into.
 - `lakekit` feature `object-store`: a `Store` over an `object_store` client (S3, GCS, Azure, local files, memory),
   from a client or a URL (`loko-object-store`).
 - `lakekit-iceberg`: Iceberg table metadata, schemas, partition specs, manifest lists, and manifests read for format

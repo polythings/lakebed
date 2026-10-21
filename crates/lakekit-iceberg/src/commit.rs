@@ -13,7 +13,7 @@ use std::hash::BuildHasher;
 use std::sync::Arc;
 use std::time::Duration;
 
-use lakekit_core::{Clock, Random, Rng, Store, uuid_v4};
+use lakekit_core::{Clock, Random, Rng, Services, Store, uuid_v4};
 
 use crate::manifest::{
     DataFile, Entry, ManifestContext, ManifestFile, ManifestWrite, Status, manifest_file, write_manifest,
@@ -126,13 +126,17 @@ pub struct Extra {
 }
 
 /// An application's part in a commit. Every method has a default that does nothing extra.
-pub trait CommitHooks<H: Store + Clock + Random> {
+pub trait CommitHooks<S: Store, C: Clock, R: Random> {
     /// The error the hooks (and so the commit) return.
     type Error: From<Error> + fmt::Debug;
 
     /// The newest version of the table, after another writer won the race.
-    fn reload(&mut self, store: &H, location: &str) -> impl Future<Output = Result<Table, Self::Error>> {
-        async move { Ok(Table::load(store, location).await?) }
+    fn reload(
+        &mut self,
+        services: Services<'_, S, C, R>,
+        location: &str,
+    ) -> impl Future<Output = Result<Table, Self::Error>> {
+        async move { Ok(Table::load(services.store, location).await?) }
     }
 
     /// Whether `base` already holds this change (an idempotent append retried), so nothing is
@@ -145,7 +149,7 @@ pub trait CommitHooks<H: Store + Clock + Random> {
     /// per attempt.
     fn extra(
         &mut self,
-        _store: &H,
+        _services: Services<'_, S, C, R>,
         _base: &Table,
         _snapshot_id: i64,
     ) -> impl Future<Output = Result<Extra, Self::Error>> {
@@ -157,17 +161,17 @@ pub trait CommitHooks<H: Store + Clock + Random> {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct NoHooks;
 
-impl<H: Store + Clock + Random> CommitHooks<H> for NoHooks {
+impl<S: Store, C: Clock, R: Random> CommitHooks<S, C, R> for NoHooks {
     type Error = Error;
 }
 
 /// Commits `change` on top of `base` (or the newest version, after a lost race), with `props` in
 /// the snapshot summary. The returned table knows its files when `base` did.
-pub async fn commit<H: Store + Clock + Random, K: CommitHooks<H>, S: BuildHasher>(
-    store: &H,
+pub async fn commit<S: Store, C: Clock, R: Random, K: CommitHooks<S, C, R>, P: BuildHasher>(
+    services: Services<'_, S, C, R>,
     base: Table,
     change: &Change,
-    props: &HashMap<String, String, S>,
+    props: &HashMap<String, String, P>,
     options: &CommitOptions,
     hooks: &mut K,
 ) -> Result<(Table, CommitInfo), K::Error> {
@@ -182,9 +186,9 @@ pub async fn commit<H: Store + Clock + Random, K: CommitHooks<H>, S: BuildHasher
     for attempt in 1..=options.max_attempts {
         if attempt > 1 {
             let (lo, hi) = options.backoff_ms;
-            let ms = (lo + store.rng().next_u64() % hi.saturating_sub(lo).max(1)) * attempt;
-            store.sleep(Duration::from_millis(ms)).await;
-            base = hooks.reload(store, &base.location).await?;
+            let ms = (lo + services.random.rng().next_u64() % hi.saturating_sub(lo).max(1)) * attempt;
+            services.clock.sleep(Duration::from_millis(ms)).await;
+            base = hooks.reload(services, &base.location).await?;
         }
         if hooks.skip(&base) {
             let info = CommitInfo {
@@ -195,7 +199,7 @@ pub async fn commit<H: Store + Clock + Random, K: CommitHooks<H>, S: BuildHasher
             };
             return Ok((base, info));
         }
-        if let Some((table, snapshot_id)) = attempt_commit(store, &base, change, props, options, hooks).await? {
+        if let Some((table, snapshot_id)) = attempt_commit(services, &base, change, props, options, hooks).await? {
             let info = CommitInfo { snapshot_id, version: table.version, attempts: attempt, skipped: false };
             return Ok((table, info));
         }
@@ -242,27 +246,27 @@ fn new_snapshot_id(random: &impl Random, base: &Table) -> i64 {
 /// One attempt: writes the snapshot's files and publishes it. `None` if another writer committed
 /// this version first (this attempt's files are deleted). With an unknown outcome, nothing is
 /// deleted.
-async fn attempt_commit<H: Store + Clock + Random, K: CommitHooks<H>, S: BuildHasher>(
-    store: &H,
+async fn attempt_commit<S: Store, C: Clock, R: Random, K: CommitHooks<S, C, R>, P: BuildHasher>(
+    services: Services<'_, S, C, R>,
     base: &Table,
     change: &Change,
-    props: &HashMap<String, String, S>,
+    props: &HashMap<String, String, P>,
     options: &CommitOptions,
     hooks: &mut K,
 ) -> Result<Option<(Table, i64)>, K::Error> {
-    let snapshot_id = new_snapshot_id(store, base);
+    let snapshot_id = new_snapshot_id(services.random, base);
     let sequence_number = base.metadata.next_sequence_number();
     let mut uploads: Vec<(String, Vec<u8>)> = vec![];
     let mut unknown = false;
     let result = async {
-        let manifests = write_manifests(store, base, change, snapshot_id, options, &mut uploads).await?;
-        let extra = hooks.extra(store, base, snapshot_id).await?;
+        let manifests = write_manifests(services, base, change, snapshot_id, options, &mut uploads).await?;
+        let extra = hooks.extra(services, base, snapshot_id).await?;
         uploads.extend(extra.files);
-        let list_uri = format!("{}/metadata/snap-{snapshot_id}-{}.avro", base.location, uuid_v4(store));
+        let list_uri = format!("{}/metadata/snap-{snapshot_id}-{}.avro", base.location, uuid_v4(services.random));
         let parent = base.metadata.current_snapshot_id();
         let list = write_manifest_list(&manifests, snapshot_id, parent, sequence_number)?;
         uploads.push((list_uri.clone(), list));
-        let puts = uploads.iter().map(|(uri, bytes)| store.put(uri, bytes.clone()));
+        let puts = uploads.iter().map(|(uri, bytes)| services.store.put(uri, bytes.clone()));
         futures_util::future::try_join_all(puts).await.map_err(Error::from)?;
 
         let mut summary: HashMap<String, String> = props.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
@@ -270,7 +274,7 @@ async fn attempt_commit<H: Store + Clock + Random, K: CommitHooks<H>, S: BuildHa
         summary.extend(counters(change, &base.metadata.summary()));
         // Snapshot and metadata logs must stay in time order, so a writer whose clock is behind the
         // last one's dates its commit at the table's last update.
-        let now = store.now_ms().max(base.metadata.last_updated_ms());
+        let now = services.clock.now_ms().max(base.metadata.last_updated_ms());
         let snapshot = NewSnapshot {
             snapshot_id,
             sequence_number,
@@ -281,21 +285,22 @@ async fn attempt_commit<H: Store + Clock + Random, K: CommitHooks<H>, S: BuildHa
         };
         let metadata = base.metadata.with_snapshot(&snapshot, &base.metadata_file, now)?;
         let version = base.version + 1;
-        let ours = put_metadata(store, &metadata_uri(&base.location, version), metadata.to_json().into_bytes())
-            .await
-            .inspect_err(|e| unknown = matches!(e, Error::CommitUnknown(_)))?;
+        let ours =
+            put_metadata(services.store, &metadata_uri(&base.location, version), metadata.to_json().into_bytes())
+                .await
+                .inspect_err(|e| unknown = matches!(e, Error::CommitUnknown(_)))?;
         Ok::<_, K::Error>(ours.then_some((metadata, version)))
     }
     .await;
     let (metadata, version) = match result {
         Ok(Some(committed)) => committed,
         Ok(None) => {
-            delete_uploads(store, uploads).await;
+            delete_uploads(services.store, uploads).await;
             return Ok(None);
         }
         Err(e) => {
             if !unknown {
-                delete_uploads(store, uploads).await;
+                delete_uploads(services.store, uploads).await;
             }
             return Err(e);
         }
@@ -320,7 +325,7 @@ async fn attempt_commit<H: Store + Clock + Random, K: CommitHooks<H>, S: BuildHa
     });
     let table = Table { files, ..Table::new(base.location.clone(), version, metadata) };
     if options.write_version_hint {
-        let _ = store.put(&hint_uri(&table.location), version.to_string().into_bytes()).await;
+        let _ = services.store.put(&hint_uri(&table.location), version.to_string().into_bytes()).await;
     }
     Ok(Some((table, snapshot_id)))
 }
@@ -332,8 +337,8 @@ async fn delete_uploads(store: &impl Store, uploads: Vec<(String, Vec<u8>)>) {
 
 /// Writes a manifest of the added files, carries the base snapshot's manifests over, and rewrites
 /// the ones holding removed files (or all of them once there are too many).
-async fn write_manifests<H: Store + Clock + Random>(
-    store: &H,
+async fn write_manifests<S: Store, C, R: Random>(
+    services: Services<'_, S, C, R>,
     base: &Table,
     change: &Change,
     snapshot_id: i64,
@@ -353,7 +358,7 @@ async fn write_manifests<H: Store + Clock + Random>(
         partition_type: &partition_type,
     };
     let mut write = |kind: &str, entries: &[ManifestWrite]| -> Result<ManifestFile> {
-        let uri = format!("{}/metadata/{}-{kind}-m.avro", base.location, uuid_v4(store));
+        let uri = format!("{}/metadata/{}-{kind}-m.avro", base.location, uuid_v4(services.random));
         let bytes = write_manifest(&ctx, entries)?;
         let mf = manifest_file(&uri, &bytes, spec_id, snapshot_id, entries, &partition_type);
         uploads.push((uri, bytes));
@@ -376,14 +381,14 @@ async fn write_manifests<H: Store + Clock + Random>(
         new.push(write("added", &entries)?);
     }
 
-    let current = base.manifests(store).await?;
+    let current = base.manifests(services.store).await?;
     let removed: HashSet<&str> = change.removed().iter().map(|e| e.file.path.as_str()).collect();
     let merge = removed.is_empty() && current.len() + new.len() > options.merge_manifests_at;
     if removed.is_empty() && !merge {
         new.extend(current);
         return Ok(new);
     }
-    let loaded = futures_util::future::try_join_all(current.iter().map(|m| Table::manifest(store, m))).await?;
+    let loaded = futures_util::future::try_join_all(current.iter().map(|m| Table::manifest(services.store, m))).await?;
     let (mut kept, mut deleted, mut carried) = (vec![], vec![], vec![]);
     for (manifest, entries) in current.into_iter().zip(loaded) {
         let live: Vec<&Entry> = entries.iter().filter(|e| e.status != Status::Deleted).collect();
@@ -472,7 +477,7 @@ pub fn counters<S: BuildHasher>(change: &Change, base: &HashMap<String, String, 
 
 #[cfg(test)]
 mod tests {
-    use lakekit_core::MemoryServices;
+    use lakekit_core::{MemoryStore, SeededRandom, TestClock};
     use serde_json::json;
 
     use super::*;
@@ -480,7 +485,24 @@ mod tests {
 
     const LOCATION: &str = "memory://wh/t";
 
-    fn create(store: &MemoryServices, format_version: u8) -> Table {
+    /// A store, a clock, and a random source in memory: what a test commit uses.
+    struct Mem {
+        store: MemoryStore,
+        clock: TestClock,
+        random: SeededRandom,
+    }
+
+    impl Mem {
+        fn at_ms(ms: i64) -> Self {
+            Self { store: MemoryStore::new(), clock: TestClock::at_ms(ms), random: SeededRandom::new(0) }
+        }
+
+        fn services(&self) -> Services<'_, MemoryStore, TestClock, SeededRandom> {
+            Services::new(&self.store, &self.clock, &self.random)
+        }
+    }
+
+    fn create(store: &Mem, format_version: u8) -> Table {
         let metadata = json!({
             "format-version": format_version, "table-uuid": "u", "location": LOCATION, "last-sequence-number": 0,
             "last-updated-ms": 0, "last-column-id": 2, "current-schema-id": 0,
@@ -494,7 +516,7 @@ mod tests {
             "properties": {}, "current-snapshot-id": -1, "snapshots": [], "snapshot-log": [], "metadata-log": []
         });
         let table = Table::new(LOCATION, 1, Metadata::from_json(metadata).unwrap());
-        block_on(store.put(&table.metadata_file, table.metadata.to_json().into_bytes())).unwrap();
+        block_on(store.store.put(&table.metadata_file, table.metadata.to_json().into_bytes())).unwrap();
         Table { files: Some(vec![]), ..table }
     }
 
@@ -512,17 +534,17 @@ mod tests {
         Change::Append { files }
     }
 
-    fn try_run<K: CommitHooks<MemoryServices>>(
-        store: &MemoryServices,
+    fn try_run<K: CommitHooks<MemoryStore, TestClock, SeededRandom>>(
+        store: &Mem,
         base: Table,
         change: &Change,
         hooks: &mut K,
     ) -> Result<(Table, CommitInfo), K::Error> {
-        block_on(commit(store, base, change, &HashMap::new(), &CommitOptions::default(), hooks))
+        block_on(commit(store.services(), base, change, &HashMap::new(), &CommitOptions::default(), hooks))
     }
 
-    fn run<K: CommitHooks<MemoryServices>>(
-        store: &MemoryServices,
+    fn run<K: CommitHooks<MemoryStore, TestClock, SeededRandom>>(
+        store: &Mem,
         base: Table,
         change: &Change,
         hooks: &mut K,
@@ -536,9 +558,9 @@ mod tests {
 
     /// The live files of the newest version, read back from the store: (name, data sequence
     /// number, file sequence number).
-    fn live(store: &MemoryServices) -> Vec<(String, i64, i64)> {
-        let mut t = block_on(Table::load(store, LOCATION)).unwrap();
-        let mut files: Vec<_> = block_on(t.live_files(store))
+    fn live(store: &Mem) -> Vec<(String, i64, i64)> {
+        let mut t = block_on(Table::load(&store.store, LOCATION)).unwrap();
+        let mut files: Vec<_> = block_on(t.live_files(&store.store))
             .unwrap()
             .iter()
             .map(|e| {
@@ -555,7 +577,7 @@ mod tests {
 
     #[test]
     fn append_replace_and_delete() {
-        let store = MemoryServices::at_ms(1_000);
+        let store = Mem::at_ms(1_000);
         let t = create(&store, 2);
         let (t, info) = run(&store, t, &append(vec![file("a", 1, 10), file("b", 2, 20)]), &mut NoHooks);
         assert_eq!((info.version, info.attempts, info.skipped), (2, 1, false));
@@ -577,12 +599,12 @@ mod tests {
         assert_eq!((summary["operation"].as_str(), summary[crate::summary::TOTAL_RECORDS].as_str()), ("delete", "10"));
         assert_eq!(summary[crate::summary::DELETED_DATA_FILES], "1");
         assert_eq!(t.metadata.metadata_log_len(), 3);
-        assert_eq!(block_on(store.get(&hint_uri(LOCATION))).unwrap().as_deref(), Some(&b"4"[..]));
+        assert_eq!(block_on(store.store.get(&hint_uri(LOCATION))).unwrap().as_deref(), Some(&b"4"[..]));
     }
 
     #[test]
     fn a_lost_race_retries_on_the_newer_version() {
-        let store = MemoryServices::at_ms(1_000);
+        let store = Mem::at_ms(1_000);
         let stale = create(&store, 2);
         let (_, first) = run(&store, stale.clone(), &append(vec![file("a", 1, 10)]), &mut NoHooks);
         let (_, second) = run(&store, stale, &append(vec![file("b", 1, 10)]), &mut NoHooks);
@@ -595,7 +617,7 @@ mod tests {
 
     #[test]
     fn removing_files_that_are_gone_is_a_conflict() {
-        let store = MemoryServices::at_ms(1_000);
+        let store = Mem::at_ms(1_000);
         let (t, _) = run(&store, create(&store, 2), &append(vec![file("a", 1, 10)]), &mut NoHooks);
         let removed = t.files.clone().unwrap_or_default();
         let (t, _) = run(&store, t, &Change::Delete { removed: removed.clone() }, &mut NoHooks);
@@ -606,14 +628,19 @@ mod tests {
     /// Hooks that skip a batch already committed, and add a file and summary properties.
     struct Batch(&'static str);
 
-    impl CommitHooks<MemoryServices> for Batch {
+    impl CommitHooks<MemoryStore, TestClock, SeededRandom> for Batch {
         type Error = Error;
 
         fn skip(&mut self, base: &Table) -> bool {
             base.metadata.ancestors().iter().any(|s| s.summary.get("batch").map(String::as_str) == Some(self.0))
         }
 
-        fn extra(&mut self, _: &MemoryServices, base: &Table, snapshot_id: i64) -> impl Future<Output = Result<Extra>> {
+        fn extra(
+            &mut self,
+            _: Services<'_, MemoryStore, TestClock, SeededRandom>,
+            base: &Table,
+            snapshot_id: i64,
+        ) -> impl Future<Output = Result<Extra>> {
             let uri = format!("{}/metadata/extra-{snapshot_id}", base.location);
             let summary =
                 HashMap::from([("batch".to_string(), self.0.to_string()), ("extra".to_string(), uri.clone())]);
@@ -623,10 +650,10 @@ mod tests {
 
     #[test]
     fn hooks_skip_and_extend_commits() {
-        let store = MemoryServices::at_ms(1_000);
+        let store = Mem::at_ms(1_000);
         let (t, info) = run(&store, create(&store, 2), &append(vec![file("a", 1, 10)]), &mut Batch("b1"));
         let extra = t.metadata.summary()["extra"].clone();
-        assert!(block_on(store.exists(&extra)).unwrap());
+        assert!(block_on(store.store.exists(&extra)).unwrap());
         let (t, again) = run(&store, t, &append(vec![file("a", 1, 10)]), &mut Batch("b1"));
         assert!(again.skipped);
         assert_eq!((again.version, again.snapshot_id), (info.version, info.snapshot_id));
@@ -635,22 +662,22 @@ mod tests {
 
     #[test]
     fn many_manifests_merge() {
-        let store = MemoryServices::at_ms(1_000);
+        let store = Mem::at_ms(1_000);
         let mut t = create(&store, 2);
         for i in 0..9 {
             t = run(&store, t, &append(vec![file(&format!("f{i}"), i, 1)]), &mut NoHooks).0;
         }
-        assert_eq!(block_on(t.manifests(&store)).unwrap().len(), 2, "eight merged into one, plus the new one");
+        assert_eq!(block_on(t.manifests(&store.store)).unwrap().len(), 2, "eight merged into one, plus the new one");
         assert_eq!(live(&store).len(), 9);
     }
 
     #[test]
     fn a_clock_behind_the_table_keeps_the_logs_in_order() {
-        let store = MemoryServices::at_ms(5_000);
+        let store = Mem::at_ms(5_000);
         let (t, _) = run(&store, create(&store, 2), &append(vec![file("a", 1, 10)]), &mut NoHooks);
-        let late = MemoryServices::at_ms(1_000);
+        let late = Mem::at_ms(1_000);
         for uri in store.store.uris() {
-            block_on(late.put(&uri, block_on(store.get(&uri)).unwrap().unwrap())).unwrap();
+            block_on(late.store.put(&uri, block_on(store.store.get(&uri)).unwrap().unwrap())).unwrap();
         }
         let (t, _) = run(&late, t, &append(vec![file("b", 1, 10)]), &mut NoHooks);
         assert_eq!((t.metadata.current_snapshot().unwrap().timestamp_ms, t.metadata.last_updated_ms()), (5_000, 5_000));
@@ -658,7 +685,7 @@ mod tests {
 
     #[test]
     fn a_replace_needs_a_sequence_number_per_added_file() {
-        let store = MemoryServices::at_ms(1_000);
+        let store = Mem::at_ms(1_000);
         let (t, _) = run(&store, create(&store, 2), &append(vec![file("a", 1, 10)]), &mut NoHooks);
         let removed = files_named(&t, "a.parquet");
         let change =
@@ -669,7 +696,7 @@ mod tests {
 
     #[test]
     fn only_v2_tables_are_written() {
-        let store = MemoryServices::at_ms(1_000);
+        let store = Mem::at_ms(1_000);
         let err = try_run(&store, create(&store, 1), &append(vec![]), &mut NoHooks);
         assert!(matches!(err, Err(Error::Unsupported(_))));
     }

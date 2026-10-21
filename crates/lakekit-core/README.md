@@ -11,8 +11,8 @@ their own: they read and write through a `Store`, take the time from a `Clock`, 
   `TestClock` moves only when told.
 - `Random`: random numbers. `OsRandom` (feature `getrandom`, native and WASI) uses the operating system's generator;
   `SeededRandom` repeats a sequence from a seed.
-- `Services`: a store, a clock, and a random source as one value, for APIs that need all three (commits).
-- `MemoryServices`: a `MemoryStore`, a `TestClock`, and a `SeededRandom`, for tests.
+- `Services`: a store, a clock, and a random source, each borrowed, for APIs that need all three (commits):
+  `Services::new(&store, &clock, &random)`.
 - `uuid_v4`, `uuid_v7`: identifiers from a `Random` (and a `Clock`), with the `uuid` crate.
 - `Error`: one error type, whose variant says what a caller can do (`NotFound`, `Conflict`, `CommitUnknown`, …); a
   store's error converts into it.

@@ -8,8 +8,7 @@
 //!   delete. `loko-object-store` implements it over `object_store`.
 //! - [`Clock`]: the time and a timer. `TokioClock` (feature `tokio`) is a native one.
 //! - [`Random`]: random numbers. `OsRandom` (feature `getrandom`) is a native one.
-//! - [`Services`]: a store, a clock, and a random source as one value, for APIs that need all three;
-//!   [`MemoryServices`] is all three in memory, for tests.
+//! - [`Services`]: a store, a clock, and a random source, borrowed, for APIs that need all three.
 //! - [`Error`]: one error type for the format crates, converted from the store's.
 //!
 //! ```
@@ -37,9 +36,9 @@ pub use error::{Error, Result};
 pub use ids::{uuid_v4, uuid_v7};
 #[cfg(all(feature = "tokio", not(target_arch = "wasm32")))]
 pub use loko_clock::TokioClock;
-pub use loko_clock::{Clock, HasClock, TestClock};
+pub use loko_clock::{Clock, TestClock};
 #[cfg(all(feature = "getrandom", not(all(target_arch = "wasm32", target_os = "unknown"))))]
 pub use loko_random::OsRandom;
-pub use loko_random::{CryptoRng, HasRandom, Random, Rng, SeededRandom, SeededRng};
-pub use loko_store::{Error as StoreError, HasStore, Listed, MemoryStore, MemoryUpload, Store, Upload};
-pub use services::{MemoryServices, Services};
+pub use loko_random::{CryptoRng, Random, Rng, SeededRandom, SeededRng};
+pub use loko_store::{Error as StoreError, Listed, MemoryStore, MemoryUpload, Store, Upload};
+pub use services::Services;

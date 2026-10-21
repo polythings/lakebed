@@ -38,9 +38,6 @@ struct IoStore {
     io: FileIO,
 }
 
-/// The store with a test clock and seeded random numbers.
-type TestStore = Services<IoStore, TestClock, SeededRandom>;
-
 /// The store's results.
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -145,7 +142,7 @@ async fn write_theirs(table: &iceberg::table::Table, batch: &RecordBatch, name: 
 }
 
 /// Writes `batch` with arrow-rs's Parquet writer; returns lakekit's data file.
-async fn write_ours(store: &TestStore, table: &Table, batch: &RecordBatch, name: &str, day: i32) -> DataFile {
+async fn write_ours(store: &IoStore, table: &Table, batch: &RecordBatch, name: &str, day: i32) -> DataFile {
     let mut bytes = vec![];
     let mut writer = ArrowWriter::try_new(&mut bytes, batch.schema(), None).unwrap();
     writer.write(batch).unwrap();
@@ -206,7 +203,7 @@ async fn planned(io: &FileIO, metadata_file: &str) -> Vec<String> {
     paths
 }
 
-async fn live(store: &TestStore, metadata_file: &str) -> (Table, Vec<Entry>) {
+async fn live(store: &IoStore, metadata_file: &str) -> (Table, Vec<Entry>) {
     let mut table = Table::from_metadata_file(store, metadata_file).await.unwrap();
     let mut files = table.live_files(store).await.unwrap().to_vec();
     files.sort_by(|a, b| a.file.path.cmp(&b.file.path));
@@ -231,7 +228,8 @@ async fn tables_round_trip_between_lakekit_and_iceberg_rust() {
         Some(UnboundPartitionSpec::builder().add_partition_field(1, "time_day", IceTransform::Day).unwrap().build());
     let table = catalog.create_table(&ns, creation).await.unwrap();
     let io = table.file_io().clone();
-    let store = Services::new(IoStore { io: io.clone() }, TestClock::at_ms(T0 / 1000), SeededRandom::new(0));
+    let store = IoStore { io: io.clone() };
+    let (clock, random) = (TestClock::at_ms(T0 / 1000), SeededRandom::new(0));
     let arrow = Arc::new(iceberg::arrow::schema_to_arrow_schema(table.metadata().current_schema()).unwrap());
 
     // iceberg-rust appends; lakekit reads the file as iceberg-rust records it.
@@ -252,7 +250,7 @@ async fn tables_round_trip_between_lakekit_and_iceberg_rust() {
     // lakekit commits on top; iceberg-rust reads the new version and lakekit's manifests.
     let ours = write_ours(&store, &base, &batch(&arrow, 1, 3_000), "ours-1", 20_455).await;
     let (committed, info) = commit(
-        &store,
+        Services::new(&store, &clock, &random),
         base,
         &Change::Append { files: vec![ours.clone()] },
         &HashMap::new(),

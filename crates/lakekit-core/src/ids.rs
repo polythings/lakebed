@@ -9,12 +9,12 @@ pub fn uuid_v4(random: &impl Random) -> String {
     Builder::from_random_bytes(bytes).into_uuid().to_string()
 }
 
-/// A time-ordered UUID (version 7) from `source`'s clock and random numbers: names made with it
-/// sort by creation time.
-pub fn uuid_v7(source: &(impl Clock + Random)) -> String {
-    let millis = u64::try_from(source.now_ms()).unwrap_or(0);
+/// A time-ordered UUID (version 7) from `clock` and `random`: names made with it sort by creation
+/// time.
+pub fn uuid_v7(clock: &impl Clock, random: &impl Random) -> String {
+    let millis = u64::try_from(clock.now_ms()).unwrap_or(0);
     let mut bytes = [0u8; 10];
-    source.rng().fill_bytes(&mut bytes);
+    random.rng().fill_bytes(&mut bytes);
     Builder::from_unix_timestamp_millis(millis, &bytes).into_uuid().to_string()
 }
 
@@ -23,20 +23,20 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
-    use crate::MemoryServices;
+    use crate::{SeededRandom, TestClock};
 
     #[test]
     fn uuids_are_well_formed() {
-        let source = MemoryServices::at_ms(1_767_225_600_000);
-        let v4 = uuid_v4(&source);
-        let v7 = uuid_v7(&source);
+        let (clock, random) = (TestClock::at_ms(1_767_225_600_000), SeededRandom::new(0));
+        let v4 = uuid_v4(&random);
+        let v7 = uuid_v7(&clock, &random);
         for (u, version) in [(&v4, '4'), (&v7, '7')] {
             assert_eq!(u.len(), 36);
             assert_eq!(u.chars().nth(14), Some(version));
             assert!(matches!(u.chars().nth(19), Some('8' | '9' | 'a' | 'b')));
         }
         // Version 7 starts with the time, so later ones sort later.
-        source.clock.advance(Duration::from_millis(1));
-        assert!(uuid_v7(&source) > v7);
+        clock.advance(Duration::from_millis(1));
+        assert!(uuid_v7(&clock, &random) > v7);
     }
 }

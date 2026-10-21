@@ -12,7 +12,7 @@ use object_store::memory::InMemory;
 
 #[tokio::test]
 async fn iceberg_commits_through_object_store() {
-    let store = Services::new(ObjectStoreAdapter::new(Arc::new(InMemory::new()), "memory://"), TokioClock, OsRandom);
+    let store = ObjectStoreAdapter::new(Arc::new(InMemory::new()), "memory://");
     let location = "memory://warehouse/t";
     let metadata = Metadata::parse(
         br#"{"format-version": 2, "table-uuid": "u", "location": "memory://warehouse/t", "last-sequence-number": 0,
@@ -33,8 +33,16 @@ async fn iceberg_commits_through_object_store() {
         ..DataFile::default()
     };
     let change = Change::Append { files: vec![file] };
-    let (_, info) =
-        commit(&store, table, &change, &HashMap::new(), &CommitOptions::default(), &mut NoHooks).await.unwrap();
+    let (_, info) = commit(
+        Services::new(&store, &TokioClock, &OsRandom),
+        table,
+        &change,
+        &HashMap::new(),
+        &CommitOptions::default(),
+        &mut NoHooks,
+    )
+    .await
+    .unwrap();
     assert_eq!(info.version, 2);
 
     let mut loaded = Table::load(&store, location).await.unwrap();

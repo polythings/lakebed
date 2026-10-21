@@ -28,7 +28,7 @@ lakekit's design, laid out like Timelake's and lakeglass's. Start here, people a
 
 ## Index
 
-4 specs: 2 in progress, 2 done. Decisions D1–D15.
+4 specs: 2 in progress, 2 done. Decisions D1–D16.
 
 | # | Spec | Status | Updated |
 |---:|---|---|---|

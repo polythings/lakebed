@@ -31,16 +31,16 @@ browser, a Cloudflare Worker, a CLI, or a server, and tests run against memory.
   between commit attempts.
 - **`Random`:** `rng()`, a generator of the caller's own: snapshot ids, file names, and the jitter between commit
   attempts.
-- **Who needs what:** readers need only a `Store`; commits need `Store + Clock + Random`.
-- **`Services`:** a store, a clock, and a random source as one value (`Services::new(store, clock, random)`), for APIs
-  that need all three: it implements loko's `HasStore`, `HasClock`, and `HasRandom`, so it is all three. Any type that is all three (a JavaScript host, an
-  application's own bundle) needs no wrapper.
+- **Who needs what:** readers take only a `Store`; commits take `Services`, a store, a clock, and a random source.
+- **`Services`:** a struct of three references, `store`, `clock`, and `random`, each borrowed from wherever the
+  caller keeps it: `Services::new(&s3, &TokioClock, &OsRandom)`. One object that is all three (a JavaScript host) goes
+  in all three places: `Services::new(&host, &host, &host)`. It's `Copy`, and commit hooks receive it too.
 - **Native implementations:** `TokioClock` (feature `tokio`: the system clock and tokio's timer, native targets) and
   `OsRandom` (feature `getrandom`: the operating system's generator, native targets and WASI).
 - **Futures aren't `Send`.** Methods return `impl Future`, without a `Send` bound, so a store or clock can wrap
   JavaScript promises (wasm-bindgen). Native ones are free to be `Send`.
-- **For tests:** `MemoryServices` is a `MemoryStore`, a `TestClock` that only moves when told (or when `sleep` is
-  called), and a `SeededRandom`, so tests are deterministic.
+- **For tests:** a `MemoryStore`, a `TestClock` that only moves when told (or when `sleep` is called), and a
+  `SeededRandom`, so tests are deterministic.
 - **`Error`:** one error type for all crates, with the variant saying what a caller can do: `Invalid`, `Unsupported`,
   `Conflict` (retry on the newer version), `CommitUnknown` (the commit may have landed: delete nothing it wrote, load
   the table again), `NotFound`, `Store`, and `Corrupt`. It is `non_exhaustive`. A store's error (`StoreError`) converts
@@ -58,6 +58,7 @@ browser, a Cloudflare Worker, a CLI, or a server, and tests run against memory.
 | D10 | Objects are a `Store` of their own, apart from the time and randomness: readers need only a store, and store adapters don't decide how time is told | Accepted |
 | D13 | The time and randomness are two traits, `Clock` and `Random`, as ZIO's services are, rather than one environment trait: each says what it is, and each can be swapped on its own | Accepted |
 | D14 | `Store`, `Clock`, and `Random` are loko's services, which every polythings project shares, rather than lakekit's own; `lakekit-core` re-exports them and keeps the error type | Accepted |
+| D16 | Commits take `Services`, three references with named fields, rather than one value bounded by `Store + Clock + Random`: callers pass what they have without gluing it into a struct that implements all three, and the code says which service each call uses | Accepted |
 
 ## Open questions and issues
 
@@ -75,3 +76,5 @@ None open.
 - 2026-10-21: loko's `Random` hands out generators (`rng()`); lakekit draws its identifiers and jitter from them.
 - 2026-10-21: `Resources` and `MemoryResources` are `Services` and `MemoryServices` again, as loko calls them services
   again.
+- 2026-10-21: `Services` is three references with named fields, and commits and hooks take it instead of one value that
+  is all three (D16); `MemoryServices` is gone, and `uuid_v7` takes a clock and a random source.

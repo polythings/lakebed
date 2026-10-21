@@ -46,7 +46,7 @@ async fn files(s3: Arc<dyn object_store::ObjectStore>) -> lakekit_core::Result<u
 }
 ```
 
-Commits also need a `Clock` and a `Random`: `Services::new(store, TokioClock, OsRandom)` natively, the application's
+Commits also need a `Clock` and a `Random`: `Services::new(&store, &TokioClock, &OsRandom)` natively, the application's
 own in WebAssembly.
 
 ## Development

@@ -1,58 +1,35 @@
-use loko_clock::{Clock, HasClock, TestClock};
-use loko_random::{HasRandom, Random, SeededRandom};
-use loko_store::{HasStore, MemoryStore, Store};
+use std::fmt;
 
-/// A store, a clock, and a random source as one value, for APIs that need all three (commits):
-/// `Services::new(ObjectStoreAdapter::new(…), TokioClock, OsRandom)`. Any type that is all three
-/// works as well: a JavaScript host, or an application's own `#[loko::bundle]` struct.
-#[derive(Clone, Debug, Default)]
-pub struct Services<S, C, R> {
-    /// The store.
-    pub store: S,
-    /// The clock.
-    pub clock: C,
-    /// The random source.
-    pub random: R,
+/// The store, clock, and random source an operation such as a commit uses, each borrowed from
+/// wherever the caller keeps it: `Services::new(&s3, &TokioClock, &OsRandom)`. One object that is
+/// all three (a JavaScript host) goes in all three places: `Services::new(&host, &host, &host)`.
+pub struct Services<'a, S, C, R> {
+    /// Where objects are read and written.
+    pub store: &'a S,
+    /// The time, and waiting between attempts.
+    pub clock: &'a C,
+    /// Random numbers: snapshot ids, file names, and jitter.
+    pub random: &'a R,
 }
 
-// The three impls `#[loko::bundle]` would write, by hand, so lakekit needs no macros.
-impl<S: Store, C, R> HasStore for Services<S, C, R> {
-    type Store = S;
-
-    fn store(&self) -> &S {
-        &self.store
-    }
-}
-
-impl<S, C: Clock, R> HasClock for Services<S, C, R> {
-    type Clock = C;
-
-    fn clock(&self) -> &C {
-        &self.clock
-    }
-}
-
-impl<S, C, R: Random> HasRandom for Services<S, C, R> {
-    type Random = R;
-
-    fn random(&self) -> &R {
-        &self.random
-    }
-}
-
-impl<S, C, R> Services<S, C, R> {
-    /// `store` with `clock` and `random`.
-    pub fn new(store: S, clock: C, random: R) -> Self {
+impl<'a, S, C, R> Services<'a, S, C, R> {
+    /// `store`, `clock`, and `random`.
+    pub fn new(store: &'a S, clock: &'a C, random: &'a R) -> Self {
         Self { store, clock, random }
     }
 }
 
-/// Everything in memory, for tests: a [`MemoryStore`], a [`TestClock`], and a [`SeededRandom`].
-pub type MemoryServices = Services<MemoryStore, TestClock, SeededRandom>;
+// By hand, so `Services` is `Copy` whatever the services are (a derive would ask them to be).
+impl<S, C, R> Clone for Services<'_, S, C, R> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
 
-impl MemoryServices {
-    /// An empty store, the clock at `now_ms` milliseconds after the Unix epoch, and seed 0.
-    pub fn at_ms(now_ms: i64) -> Self {
-        Self::new(MemoryStore::new(), TestClock::at_ms(now_ms), SeededRandom::new(0))
+impl<S, C, R> Copy for Services<'_, S, C, R> {}
+
+impl<S, C, R> fmt::Debug for Services<'_, S, C, R> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Services").finish_non_exhaustive()
     }
 }
