@@ -3,10 +3,10 @@ use loko_random::{HasRandom, Random, SeededRandom};
 use loko_store::{HasStore, MemoryStore, Store};
 
 /// A store, a clock, and a random source as one value, for APIs that need all three (commits):
-/// `Resources::new(ObjectStoreAdapter::new(…), TokioClock, OsRandom)`. Any type that is all three
+/// `Services::new(ObjectStoreAdapter::new(…), TokioClock, OsRandom)`. Any type that is all three
 /// works as well: a JavaScript host, or an application's own `#[loko::bundle]` struct.
 #[derive(Clone, Debug, Default)]
-pub struct Resources<S, C, R> {
+pub struct Services<S, C, R> {
     /// The store.
     pub store: S,
     /// The clock.
@@ -16,7 +16,7 @@ pub struct Resources<S, C, R> {
 }
 
 // The three impls `#[loko::bundle]` would write, by hand, so lakekit needs no macros.
-impl<S: Store, C, R> HasStore for Resources<S, C, R> {
+impl<S: Store, C, R> HasStore for Services<S, C, R> {
     type Store = S;
 
     fn store(&self) -> &S {
@@ -24,7 +24,7 @@ impl<S: Store, C, R> HasStore for Resources<S, C, R> {
     }
 }
 
-impl<S, C: Clock, R> HasClock for Resources<S, C, R> {
+impl<S, C: Clock, R> HasClock for Services<S, C, R> {
     type Clock = C;
 
     fn clock(&self) -> &C {
@@ -32,7 +32,7 @@ impl<S, C: Clock, R> HasClock for Resources<S, C, R> {
     }
 }
 
-impl<S, C, R: Random> HasRandom for Resources<S, C, R> {
+impl<S, C, R: Random> HasRandom for Services<S, C, R> {
     type Random = R;
 
     fn random(&self) -> &R {
@@ -40,7 +40,7 @@ impl<S, C, R: Random> HasRandom for Resources<S, C, R> {
     }
 }
 
-impl<S, C, R> Resources<S, C, R> {
+impl<S, C, R> Services<S, C, R> {
     /// `store` with `clock` and `random`.
     pub fn new(store: S, clock: C, random: R) -> Self {
         Self { store, clock, random }
@@ -48,9 +48,9 @@ impl<S, C, R> Resources<S, C, R> {
 }
 
 /// Everything in memory, for tests: a [`MemoryStore`], a [`TestClock`], and a [`SeededRandom`].
-pub type MemoryResources = Resources<MemoryStore, TestClock, SeededRandom>;
+pub type MemoryServices = Services<MemoryStore, TestClock, SeededRandom>;
 
-impl MemoryResources {
+impl MemoryServices {
     /// An empty store, the clock at `now_ms` milliseconds after the Unix epoch, and seed 0.
     pub fn at_ms(now_ms: i64) -> Self {
         Self::new(MemoryStore::new(), TestClock::at_ms(now_ms), SeededRandom::new(0))

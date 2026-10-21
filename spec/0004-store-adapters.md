@@ -16,7 +16,7 @@ issues: []
 
 Ready-made `Store`s ([spec 1](0001-store-clock-random.md)) over the store libraries applications already use, so a
 native application doesn't write its own. They are [loko](https://github.com/polythings/loko)'s crates, since `Store`
-is loko's resource; `lakekit` re-exports `loko-object-store` (feature `object-store`). Each adapter is a crate of its
+is loko's service; `lakekit` re-exports `loko-object-store` (feature `object-store`). Each adapter is a crate of its
 own; the `Store` trait stays the boundary,
 because some stores aren't these libraries (a Cloudflare R2 binding reached from JavaScript) and applications wrap
 their store (lakeglass counts every request).

@@ -5,14 +5,14 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use lakekit_core::{OsRandom, Resources, Store, TokioClock};
+use lakekit_core::{OsRandom, Services, Store, TokioClock};
 use lakekit_iceberg::{Change, CommitOptions, DataFile, Datum, Metadata, NoHooks, Table, commit};
 use loko_object_store::ObjectStoreAdapter;
 use object_store::memory::InMemory;
 
 #[tokio::test]
 async fn iceberg_commits_through_object_store() {
-    let store = Resources::new(ObjectStoreAdapter::new(Arc::new(InMemory::new()), "memory://"), TokioClock, OsRandom);
+    let store = Services::new(ObjectStoreAdapter::new(Arc::new(InMemory::new()), "memory://"), TokioClock, OsRandom);
     let location = "memory://warehouse/t";
     let metadata = Metadata::parse(
         br#"{"format-version": 2, "table-uuid": "u", "location": "memory://warehouse/t", "last-sequence-number": 0,

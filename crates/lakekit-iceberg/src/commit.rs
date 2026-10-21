@@ -472,7 +472,7 @@ pub fn counters<S: BuildHasher>(change: &Change, base: &HashMap<String, String, 
 
 #[cfg(test)]
 mod tests {
-    use lakekit_core::MemoryResources;
+    use lakekit_core::MemoryServices;
     use serde_json::json;
 
     use super::*;
@@ -480,7 +480,7 @@ mod tests {
 
     const LOCATION: &str = "memory://wh/t";
 
-    fn create(store: &MemoryResources, format_version: u8) -> Table {
+    fn create(store: &MemoryServices, format_version: u8) -> Table {
         let metadata = json!({
             "format-version": format_version, "table-uuid": "u", "location": LOCATION, "last-sequence-number": 0,
             "last-updated-ms": 0, "last-column-id": 2, "current-schema-id": 0,
@@ -512,8 +512,8 @@ mod tests {
         Change::Append { files }
     }
 
-    fn try_run<K: CommitHooks<MemoryResources>>(
-        store: &MemoryResources,
+    fn try_run<K: CommitHooks<MemoryServices>>(
+        store: &MemoryServices,
         base: Table,
         change: &Change,
         hooks: &mut K,
@@ -521,8 +521,8 @@ mod tests {
         block_on(commit(store, base, change, &HashMap::new(), &CommitOptions::default(), hooks))
     }
 
-    fn run<K: CommitHooks<MemoryResources>>(
-        store: &MemoryResources,
+    fn run<K: CommitHooks<MemoryServices>>(
+        store: &MemoryServices,
         base: Table,
         change: &Change,
         hooks: &mut K,
@@ -536,7 +536,7 @@ mod tests {
 
     /// The live files of the newest version, read back from the store: (name, data sequence
     /// number, file sequence number).
-    fn live(store: &MemoryResources) -> Vec<(String, i64, i64)> {
+    fn live(store: &MemoryServices) -> Vec<(String, i64, i64)> {
         let mut t = block_on(Table::load(store, LOCATION)).unwrap();
         let mut files: Vec<_> = block_on(t.live_files(store))
             .unwrap()
@@ -555,7 +555,7 @@ mod tests {
 
     #[test]
     fn append_replace_and_delete() {
-        let store = MemoryResources::at_ms(1_000);
+        let store = MemoryServices::at_ms(1_000);
         let t = create(&store, 2);
         let (t, info) = run(&store, t, &append(vec![file("a", 1, 10), file("b", 2, 20)]), &mut NoHooks);
         assert_eq!((info.version, info.attempts, info.skipped), (2, 1, false));
@@ -582,7 +582,7 @@ mod tests {
 
     #[test]
     fn a_lost_race_retries_on_the_newer_version() {
-        let store = MemoryResources::at_ms(1_000);
+        let store = MemoryServices::at_ms(1_000);
         let stale = create(&store, 2);
         let (_, first) = run(&store, stale.clone(), &append(vec![file("a", 1, 10)]), &mut NoHooks);
         let (_, second) = run(&store, stale, &append(vec![file("b", 1, 10)]), &mut NoHooks);
@@ -595,7 +595,7 @@ mod tests {
 
     #[test]
     fn removing_files_that_are_gone_is_a_conflict() {
-        let store = MemoryResources::at_ms(1_000);
+        let store = MemoryServices::at_ms(1_000);
         let (t, _) = run(&store, create(&store, 2), &append(vec![file("a", 1, 10)]), &mut NoHooks);
         let removed = t.files.clone().unwrap_or_default();
         let (t, _) = run(&store, t, &Change::Delete { removed: removed.clone() }, &mut NoHooks);
@@ -606,19 +606,14 @@ mod tests {
     /// Hooks that skip a batch already committed, and add a file and summary properties.
     struct Batch(&'static str);
 
-    impl CommitHooks<MemoryResources> for Batch {
+    impl CommitHooks<MemoryServices> for Batch {
         type Error = Error;
 
         fn skip(&mut self, base: &Table) -> bool {
             base.metadata.ancestors().iter().any(|s| s.summary.get("batch").map(String::as_str) == Some(self.0))
         }
 
-        fn extra(
-            &mut self,
-            _: &MemoryResources,
-            base: &Table,
-            snapshot_id: i64,
-        ) -> impl Future<Output = Result<Extra>> {
+        fn extra(&mut self, _: &MemoryServices, base: &Table, snapshot_id: i64) -> impl Future<Output = Result<Extra>> {
             let uri = format!("{}/metadata/extra-{snapshot_id}", base.location);
             let summary =
                 HashMap::from([("batch".to_string(), self.0.to_string()), ("extra".to_string(), uri.clone())]);
@@ -628,7 +623,7 @@ mod tests {
 
     #[test]
     fn hooks_skip_and_extend_commits() {
-        let store = MemoryResources::at_ms(1_000);
+        let store = MemoryServices::at_ms(1_000);
         let (t, info) = run(&store, create(&store, 2), &append(vec![file("a", 1, 10)]), &mut Batch("b1"));
         let extra = t.metadata.summary()["extra"].clone();
         assert!(block_on(store.exists(&extra)).unwrap());
@@ -640,7 +635,7 @@ mod tests {
 
     #[test]
     fn many_manifests_merge() {
-        let store = MemoryResources::at_ms(1_000);
+        let store = MemoryServices::at_ms(1_000);
         let mut t = create(&store, 2);
         for i in 0..9 {
             t = run(&store, t, &append(vec![file(&format!("f{i}"), i, 1)]), &mut NoHooks).0;
@@ -651,9 +646,9 @@ mod tests {
 
     #[test]
     fn a_clock_behind_the_table_keeps_the_logs_in_order() {
-        let store = MemoryResources::at_ms(5_000);
+        let store = MemoryServices::at_ms(5_000);
         let (t, _) = run(&store, create(&store, 2), &append(vec![file("a", 1, 10)]), &mut NoHooks);
-        let late = MemoryResources::at_ms(1_000);
+        let late = MemoryServices::at_ms(1_000);
         for uri in store.store.uris() {
             block_on(late.put(&uri, block_on(store.get(&uri)).unwrap().unwrap())).unwrap();
         }
@@ -663,7 +658,7 @@ mod tests {
 
     #[test]
     fn a_replace_needs_a_sequence_number_per_added_file() {
-        let store = MemoryResources::at_ms(1_000);
+        let store = MemoryServices::at_ms(1_000);
         let (t, _) = run(&store, create(&store, 2), &append(vec![file("a", 1, 10)]), &mut NoHooks);
         let removed = files_named(&t, "a.parquet");
         let change =
@@ -674,7 +669,7 @@ mod tests {
 
     #[test]
     fn only_v2_tables_are_written() {
-        let store = MemoryResources::at_ms(1_000);
+        let store = MemoryServices::at_ms(1_000);
         let err = try_run(&store, create(&store, 1), &append(vec![]), &mut NoHooks);
         assert!(matches!(err, Err(Error::Unsupported(_))));
     }
