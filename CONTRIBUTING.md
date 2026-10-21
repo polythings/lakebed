@@ -10,7 +10,8 @@ enforce the mechanical rules (see [Checks](#checks)). This guide covers what the
    the body.
 2. **One crate per format.** A format's crate depends on `lakekit-core` and on nothing of another format's, so adding
    one never touches the others. Formats are shown as they are: no shared model flattens their differences.
-3. **No I/O of our own.** Crates read and write through `lakekit_core::Host`. They never open sockets, files, or
+3. **No I/O of our own.** Crates read and write through `lakekit_core::Store` and take the time and randomness from
+   `lakekit_core::Env`. They never open sockets, files, or
    threads, so they build for `wasm32-unknown-unknown`.
 4. **One definition of each thing.** Before writing a helper, constant, or type, look for an existing one.
 5. **Behaviour, spec, and tests change together.** A change users can see updates its spec, adds or updates tests, and
@@ -43,13 +44,13 @@ ideas we took.
 - **Types over strings:** enums and newtypes instead of strings and magic numbers. Parse once at the boundary.
 - **Don't trust files.** Check lengths and offsets before using them, cap allocations, and return an error instead of
   panicking on a malformed file. Tests feed readers truncated and garbage input.
-- **Async:** host futures aren't `Send` (JavaScript promises aren't). Never block inside async code.
+- **Async:** store and environment futures aren't `Send` (JavaScript promises aren't). Never block inside async code.
 - **Suppressing a lint:** `#[expect(lint, reason = "...")]` with a real reason. Never `#[allow]`.
 
 ## Tests
 
 - **A bug fix starts with a test that fails**, then the fix.
-- **Tests run offline**, against `MemoryHost` or a host over the reference implementation's in-memory storage.
+- **Tests run offline**, against `MemoryStore` or a store over the reference implementation's in-memory storage.
 - **Interop:** writers are tested against the format's reference reader, and readers against the reference writer.
 
 ## Checks

@@ -2,7 +2,7 @@ use std::future::Future;
 
 use crate::Result;
 
-/// An object found by [`Host::list`].
+/// An object found by [`Store::list`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Listed {
     /// Absolute URI.
@@ -11,11 +11,11 @@ pub struct Listed {
     pub size: u64,
 }
 
-/// What a table format needs from where it runs: an object store, a clock, randomness, and a way
-/// to wait. Paths are absolute URIs, as table metadata records them.
+/// Where a table's objects live: an object store, a directory, memory, or a JavaScript binding.
+/// Paths are absolute URIs, as table metadata records them.
 ///
-/// The futures aren't required to be `Send`, so hosts can wrap JavaScript promises.
-pub trait Host {
+/// The futures aren't required to be `Send`, so a store can wrap JavaScript promises.
+pub trait Store {
     /// A multipart upload in progress.
     type Upload: Upload;
 
@@ -31,16 +31,10 @@ pub trait Host {
     fn put_if_absent(&self, uri: &str, bytes: Vec<u8>) -> impl Future<Output = Result<bool>>;
     /// Starts a multipart upload to `uri`.
     fn upload(&self, uri: &str) -> impl Future<Output = Result<Self::Upload>>;
-    /// Objects whose URI starts with `prefix`.
+    /// Objects whose URI starts with `prefix` (a string prefix, not only a directory).
     fn list(&self, prefix: &str) -> impl Future<Output = Result<Vec<Listed>>>;
     /// Deletes objects; missing ones are not an error.
     fn delete(&self, uris: &[String]) -> impl Future<Output = Result<()>>;
-    /// Milliseconds since the Unix epoch.
-    fn now_ms(&self) -> i64;
-    /// A random number.
-    fn random(&self) -> u64;
-    /// Waits `ms` milliseconds.
-    fn sleep(&self, ms: u64) -> impl Future<Output = ()>;
 }
 
 /// A multipart upload: parts in order, then [`Upload::complete`].

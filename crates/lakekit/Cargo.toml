@@ -20,10 +20,15 @@ iceberg-write = ["iceberg", "lakekit-iceberg/write"]
 iceberg-arrow = ["iceberg", "lakekit-iceberg/arrow"]
 # Iceberg statistics from Parquet footers.
 iceberg-parquet-stats = ["iceberg", "lakekit-iceberg/parquet-stats"]
+# A store over an object_store client (lakekit-object-store).
+object-store = ["dep:lakekit-object-store"]
+# TokioEnv, a native environment (lakekit-core/tokio).
+tokio = ["lakekit-core/tokio"]
 
 [dependencies]
 lakekit-core.workspace = true
 lakekit-iceberg = { workspace = true, optional = true }
+lakekit-object-store = { workspace = true, optional = true }
 
 [package.metadata.docs.rs]
 all-features = true

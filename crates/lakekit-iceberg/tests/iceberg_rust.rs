@@ -21,7 +21,7 @@ use iceberg::spec::{
 use iceberg::transaction::{ApplyTransactionAction, Transaction};
 use iceberg::writer::file_writer::{FileWriter as _, FileWriterBuilder, ParquetWriterBuilder};
 use iceberg::{Catalog, CatalogBuilder, MemoryCatalog, NamespaceIdent, TableCreation, TableIdent};
-use lakekit_core::{Error, Host, Listed, MemoryHost, MemoryUpload};
+use lakekit_core::{Error, Listed, MemoryStore, MemoryUpload, Store, WithEnv};
 use lakekit_iceberg::stats::ParquetStats;
 use lakekit_iceberg::{Change, CommitOptions, DataFile, Datum, Entry, NoHooks, Status, Table, commit};
 use parquet::arrow::ArrowWriter;
@@ -32,18 +32,20 @@ use parquet::file::properties::WriterProperties;
 const T0: i64 = 1_767_225_600_000_000;
 const DAY_US: i64 = 86_400_000_000;
 
-/// A [`Host`] over iceberg-rust's `FileIO`, so both see the same objects. Clock and randomness come
-/// from a [`MemoryHost`]; listing isn't needed (tables load from their metadata file).
-struct IoHost {
+/// A [`Store`] over iceberg-rust's `FileIO`, so both see the same objects. Listing isn't needed
+/// (tables load from their metadata file).
+struct IoStore {
     io: FileIO,
-    memory: MemoryHost,
 }
+
+/// The store with a [`MemoryStore`]'s clock and randomness.
+type TestStore = WithEnv<IoStore, MemoryStore>;
 
 fn store(e: impl std::fmt::Display) -> Error {
     Error::Store(e.to_string())
 }
 
-impl Host for IoHost {
+impl Store for IoStore {
     type Upload = MemoryUpload;
 
     async fn get(&self, uri: &str) -> lakekit_core::Result<Option<Vec<u8>>> {
@@ -89,18 +91,6 @@ impl Host for IoHost {
             self.io.delete(uri).await.map_err(store)?;
         }
         Ok(())
-    }
-
-    fn now_ms(&self) -> i64 {
-        self.memory.now_ms()
-    }
-
-    fn random(&self) -> u64 {
-        self.memory.random()
-    }
-
-    fn sleep(&self, ms: u64) -> impl Future<Output = ()> {
-        self.memory.sleep(ms)
     }
 }
 
@@ -152,14 +142,14 @@ async fn write_theirs(table: &iceberg::table::Table, batch: &RecordBatch, name: 
 }
 
 /// Writes `batch` with arrow-rs's Parquet writer; returns lakekit's data file.
-async fn write_ours(host: &IoHost, table: &Table, batch: &RecordBatch, name: &str, day: i32) -> DataFile {
+async fn write_ours(store: &TestStore, table: &Table, batch: &RecordBatch, name: &str, day: i32) -> DataFile {
     let mut bytes = vec![];
     let mut writer = ArrowWriter::try_new(&mut bytes, batch.schema(), None).unwrap();
     writer.write(batch).unwrap();
     let footer = writer.close().unwrap();
     let stats = ParquetStats::new(&footer, bytes.len() as u64, nan_counts(batch));
     let uri = format!("{}/data/{name}.parquet", table.location);
-    host.put(&uri, bytes).await.unwrap();
+    store.put(&uri, bytes).await.unwrap();
     stats.data_file(uri, vec![Some(Datum::Date(day))])
 }
 
@@ -213,9 +203,9 @@ async fn planned(io: &FileIO, metadata_file: &str) -> Vec<String> {
     paths
 }
 
-async fn live(host: &IoHost, metadata_file: &str) -> (Table, Vec<Entry>) {
-    let mut table = Table::from_metadata_file(host, metadata_file).await.unwrap();
-    let mut files = table.live_files(host).await.unwrap().to_vec();
+async fn live(store: &TestStore, metadata_file: &str) -> (Table, Vec<Entry>) {
+    let mut table = Table::from_metadata_file(store, metadata_file).await.unwrap();
+    let mut files = table.live_files(store).await.unwrap().to_vec();
     files.sort_by(|a, b| a.file.path.cmp(&b.file.path));
     (table, files)
 }
@@ -238,14 +228,14 @@ async fn tables_round_trip_between_lakekit_and_iceberg_rust() {
         Some(UnboundPartitionSpec::builder().add_partition_field(1, "time_day", IceTransform::Day).unwrap().build());
     let table = catalog.create_table(&ns, creation).await.unwrap();
     let io = table.file_io().clone();
-    let host = IoHost { io: io.clone(), memory: MemoryHost::new(T0 / 1000) };
+    let store = WithEnv::new(IoStore { io: io.clone() }, MemoryStore::new(T0 / 1000));
     let arrow = Arc::new(iceberg::arrow::schema_to_arrow_schema(table.metadata().current_schema()).unwrap());
 
     // iceberg-rust appends; lakekit reads the file as iceberg-rust records it.
     let first = batch(&arrow, 0, 5_000);
     let theirs = write_theirs(&table, &first, "theirs-1", 20_454).await;
     let table = append_theirs(&catalog, &table, theirs.clone()).await;
-    let (base, files) = live(&host, table.metadata_location().unwrap()).await;
+    let (base, files) = live(&store, table.metadata_location().unwrap()).await;
     assert_eq!(files.len(), 1);
     assert_eq!(*files[0].file, as_ours(&theirs));
     assert_eq!((files[0].status, files[0].sequence_number, files[0].file_sequence_number), (Status::Added, 1, 1));
@@ -257,9 +247,9 @@ async fn tables_round_trip_between_lakekit_and_iceberg_rust() {
     assert_eq!(stats.data_file(theirs.file_path().into(), vec![Some(Datum::Date(20_454))]), as_ours(&theirs));
 
     // lakekit commits on top; iceberg-rust reads the new version and lakekit's manifests.
-    let ours = write_ours(&host, &base, &batch(&arrow, 1, 3_000), "ours-1", 20_455).await;
+    let ours = write_ours(&store, &base, &batch(&arrow, 1, 3_000), "ours-1", 20_455).await;
     let (committed, info) = commit(
-        &host,
+        &store,
         base,
         &Change::Append { files: vec![ours.clone()] },
         &HashMap::new(),
@@ -284,11 +274,11 @@ async fn tables_round_trip_between_lakekit_and_iceberg_rust() {
     let ident = TableIdent::from_strs(["ns", "registered"]).unwrap();
     let copy =
         committed.metadata_file.replace("v2.metadata.json", "00002-1d5e8c1a-0000-4000-8000-000000000000.metadata.json");
-    host.put(&copy, committed.metadata.to_json().into_bytes()).await.unwrap();
+    store.put(&copy, committed.metadata.to_json().into_bytes()).await.unwrap();
     let registered = catalog.register_table(&ident, copy).await.unwrap();
     let again = write_theirs(&registered, &batch(&arrow, 2, 1_000), "theirs-2", 20_456).await;
     let registered = append_theirs(&catalog, &registered, again.clone()).await;
-    let (_, files) = live(&host, registered.metadata_location().unwrap()).await;
+    let (_, files) = live(&store, registered.metadata_location().unwrap()).await;
     let seen: Vec<(&str, i64)> =
         files.iter().map(|e| (e.file.path.rsplit('/').next().unwrap(), e.sequence_number)).collect();
     assert_eq!(seen, [("ours-1.parquet", 2), ("theirs-1.parquet", 1), ("theirs-2.parquet", 3)]);

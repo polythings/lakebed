@@ -1,7 +1,8 @@
 # lakekit-iceberg
 
 [Apache Iceberg](https://iceberg.apache.org) tables read and written without I/O of their own, through a
-[`lakekit_core::Host`](../lakekit-core), so they work in WebAssembly (browsers, Cloudflare Workers) as well as natively.
+[`lakekit_core::Store`](../lakekit-core) (and, for commits, an `Env`), so they work in WebAssembly (browsers,
+Cloudflare Workers) as well as natively.
 
 | Feature | What it adds |
 |---|---|

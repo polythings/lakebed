@@ -1,0 +1,32 @@
+[package]
+name = "lakekit-object-store"
+description = "A lakekit store over an object_store client: S3, GCS, Azure, local files, memory, and more"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+lakekit-core.workspace = true
+# Without features: applications enable the backends they need (`aws`, `gcp`, `azure`, `http`, `fs`, or the `*-base`
+# variants for WebAssembly) on their own `object_store` dependency.
+object_store.workspace = true
+futures-util.workspace = true
+url.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+lakekit-core = { workspace = true, features = ["tokio"] }
+lakekit-iceberg = { workspace = true, features = ["write"] }
+object_store = { workspace = true, features = ["fs"] }
+tempfile = "3"
+tokio.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[lints]
+workspace = true

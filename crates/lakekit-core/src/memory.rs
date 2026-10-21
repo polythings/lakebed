@@ -2,23 +2,24 @@ use std::collections::BTreeMap;
 use std::future::{Future, ready};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use crate::{Error, Host, Listed, Result, Upload};
+use crate::{Env, Error, Listed, Result, Store, Upload};
 
-/// A [`Host`] in memory, with a fixed clock and a seeded random sequence: for tests and examples.
-/// Clones share the same objects.
+/// A [`Store`] in memory that is also an [`Env`] with a clock that moves only when told (or when
+/// `sleep` is called) and a seeded random sequence: for tests and examples. Clones share the same
+/// objects.
 #[derive(Clone, Debug, Default)]
-pub struct MemoryHost {
+pub struct MemoryStore {
     objects: Arc<Mutex<BTreeMap<String, Vec<u8>>>>,
     clock: Arc<Mutex<i64>>,
     seed: Arc<Mutex<u64>>,
 }
 
-impl MemoryHost {
+impl MemoryStore {
     /// An empty store at time `now_ms`.
     pub fn new(now_ms: i64) -> Self {
-        let host = Self::default();
-        *lock(&host.clock) = now_ms;
-        host
+        let store = Self::default();
+        *lock(&store.clock) = now_ms;
+        store
     }
 
     /// Moves the clock forward.
@@ -40,10 +41,10 @@ fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// An upload to a [`MemoryHost`].
+/// An upload to a [`MemoryStore`].
 #[derive(Debug)]
 pub struct MemoryUpload {
-    host: MemoryHost,
+    store: MemoryStore,
     uri: String,
     bytes: Vec<u8>,
 }
@@ -55,7 +56,7 @@ impl Upload for MemoryUpload {
     }
 
     fn complete(self) -> impl Future<Output = Result<()>> {
-        self.host.objects().insert(self.uri, self.bytes);
+        self.store.objects().insert(self.uri, self.bytes);
         ready(Ok(()))
     }
 
@@ -64,7 +65,7 @@ impl Upload for MemoryUpload {
     }
 }
 
-impl Host for MemoryHost {
+impl Store for MemoryStore {
     type Upload = MemoryUpload;
 
     fn get(&self, uri: &str) -> impl Future<Output = Result<Option<Vec<u8>>>> {
@@ -99,7 +100,7 @@ impl Host for MemoryHost {
     }
 
     fn upload(&self, uri: &str) -> impl Future<Output = Result<MemoryUpload>> {
-        ready(Ok(MemoryUpload { host: self.clone(), uri: uri.to_string(), bytes: vec![] }))
+        ready(Ok(MemoryUpload { store: self.clone(), uri: uri.to_string(), bytes: vec![] }))
     }
 
     fn list(&self, prefix: &str) -> impl Future<Output = Result<Vec<Listed>>> {
@@ -119,7 +120,9 @@ impl Host for MemoryHost {
         }
         ready(Ok(()))
     }
+}
 
+impl Env for MemoryStore {
     fn now_ms(&self) -> i64 {
         *lock(&self.clock)
     }

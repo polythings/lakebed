@@ -1,9 +1,9 @@
 # lakekit
 
 Table formats read and written without I/O of their own, in Rust, for WebAssembly and native targets. Each format's
-metadata (Apache Iceberg first) is parsed and written by plain code that asks a `Host` for bytes: the application
-implements the host over its object store, so the same crate runs in a browser, a Cloudflare Worker, a CLI, or a
-server.
+metadata (Apache Iceberg first) is parsed and written by plain code that asks a `Store` for bytes and an `Env` for the
+time and randomness: the application supplies both, so the same crate runs in a browser, a Cloudflare Worker, a CLI,
+or a server.
 
 lakekit is what [Timelake](https://github.com/polythings/timelake) and [lakeglass](https://github.com/polythings/lakeglass)
 share. The official Rust crates for these formats build on tokio and HTTP clients, which don't compile to
@@ -13,11 +13,12 @@ share. The official Rust crates for these formats build on tokio and HTTP client
 
 | Crate | What it does |
 |---|---|
-| [`lakekit-core`](crates/lakekit-core) | The `Host` trait (ranged reads, listing, conditional writes, clock, randomness), errors, an in-memory host |
+| [`lakekit-core`](crates/lakekit-core) | The `Store` trait (ranged reads, listing, conditional writes) and the `Env` trait (clock, randomness), errors, an in-memory store, a tokio environment |
 | [`lakekit-iceberg`](crates/lakekit-iceberg) | Apache Iceberg: metadata, manifests, and commits |
-| [`lakekit`](crates/lakekit) | Re-exports the format crates, one feature each |
+| [`lakekit-object-store`](crates/lakekit-object-store) | A `Store` over an `object_store` client: S3, GCS, Azure, local files, memory |
+| [`lakekit`](crates/lakekit) | Re-exports the crates, one feature each |
 
-More formats get their own crate as they are added (spec 2).
+More formats get their own crate as they are added (spec 2), and more stores their own adapter (spec 4).
 
 ## Iceberg
 
@@ -33,13 +34,19 @@ More formats get their own crate as they are added (spec 2).
 What lakekit writes, iceberg-rust reads, and the other way round: the tests commit to one table with both in turn.
 
 ```rust
-use lakekit_iceberg::Table;
+use std::sync::Arc;
 
-async fn files<H: lakekit_core::Host>(host: &H) -> lakekit_core::Result<usize> {
-    let mut table = Table::load(host, "s3://bucket/warehouse/db/events").await?;
-    Ok(table.live_files(host).await?.len())
+use lakekit_iceberg::Table;
+use lakekit_object_store::ObjectStoreAdapter;
+
+async fn files(s3: Arc<dyn object_store::ObjectStore>) -> lakekit_core::Result<usize> {
+    let store = ObjectStoreAdapter::new(s3, "s3://bucket");
+    let mut table = Table::load(&store, "s3://bucket/warehouse/db/events").await?;
+    Ok(table.live_files(&store).await?.len())
 }
 ```
+
+Commits also need an `Env`: `WithEnv::new(store, TokioEnv)` natively, the application's own in WebAssembly.
 
 ## Development
 
