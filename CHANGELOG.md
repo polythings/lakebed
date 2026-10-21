@@ -18,4 +18,10 @@ versions follow [Semantic Versioning](https://semver.org/).
   decimals as Iceberg's shortest big-endian bytes).
 - `lakekit`: re-exports the format crates behind a feature each.
 
+### Changed
+
+- The project is named lakekit, and its crates `lakekit-core`, `lakekit-iceberg`, and `lakekit`; it was lakebed
+  (`lakebed-core`, …) until 2026-10-21. Nothing was published under the old names; GitHub redirects the old
+  repository URL.
+
 The Iceberg code started as Timelake's shared writer (`timelake-format`), made general.
