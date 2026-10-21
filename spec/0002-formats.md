@@ -4,7 +4,7 @@ title: One crate per format
 status: in-progress
 updated: 2026-10-21
 versions: [unreleased]
-related: [1, 3, 4]
+related: [1, 3, 4, 5, 6]
 issues: [6, 11]
 ---
 
@@ -41,7 +41,8 @@ lakeglass reads it; the formats lakeglass explores come next.
 |---|---|---|
 | D4 | One repository with a crate per format and an umbrella crate with a feature each, not one crate with every format | Accepted |
 | D5 | Format crates show their format as it is; a common view lives above them | Accepted |
-| D6 | Arrow and Parquet follow the major version iceberg-rust's newest release uses, so applications using both build one copy | Accepted |
+| D6 | Arrow and Parquet follow the major version iceberg-rust's newest release uses, so applications using both build one copy | Superseded by D17 |
+| D17 | Arrow and Parquet follow the major version of the newest DataFusion release, so applications can use DataFusion's newest features (Timelake's engine stops using iceberg-rust, spec 5); iceberg-rust stays in interop tests, which exchange files, not Arrow values | Accepted |
 
 ## Open questions and issues
 
@@ -53,3 +54,5 @@ lakeglass reads it; the formats lakeglass explores come next.
 - 2026-10-20: proposed and the layout built, with Iceberg as the first format.
 - 2026-10-21: the project renamed from lakebed to lakekit, an easier name to read; crates `lakekit-core`,
   `lakekit-iceberg`, and `lakekit`.
+- 2026-10-21: the common table view (spec 5) and data file formats (spec 6) proposed above the format crates; Arrow
+  follows the newest DataFusion release instead of iceberg-rust (D17).
