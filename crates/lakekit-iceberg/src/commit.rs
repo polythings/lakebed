@@ -12,7 +12,7 @@ use std::future::Future;
 use std::hash::BuildHasher;
 use std::sync::Arc;
 
-use lakebed_core::{Host, uuid_v4};
+use lakekit_core::{Host, uuid_v4};
 
 use crate::manifest::{
     DataFile, Entry, ManifestContext, ManifestFile, ManifestWrite, Status, manifest_file, write_manifest,
@@ -469,7 +469,7 @@ pub fn counters<S: BuildHasher>(change: &Change, base: &HashMap<String, String, 
 
 #[cfg(test)]
 mod tests {
-    use lakebed_core::MemoryHost;
+    use lakekit_core::MemoryHost;
     use serde_json::json;
 
     use super::*;

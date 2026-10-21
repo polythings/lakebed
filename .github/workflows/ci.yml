@@ -35,10 +35,10 @@ jobs:
         env:
           RUSTFLAGS: -D warnings
         run: |
-          cargo check -p lakebed-iceberg --no-default-features
-          cargo check -p lakebed-iceberg --features write
-          cargo check -p lakebed-iceberg --features arrow
-          cargo check -p lakebed-iceberg --features parquet-stats
+          cargo check -p lakekit-iceberg --no-default-features
+          cargo check -p lakekit-iceberg --features write
+          cargo check -p lakekit-iceberg --features arrow
+          cargo check -p lakekit-iceberg --features parquet-stats
 
   wasm:
     name: WebAssembly (browser and WASI targets)

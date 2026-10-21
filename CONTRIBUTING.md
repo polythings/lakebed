@@ -1,4 +1,4 @@
-# Contributing to lakebed
+# Contributing to lakekit
 
 This is the code guide for everyone who changes this repository, people and AI agents alike. Formatters and linters
 enforce the mechanical rules (see [Checks](#checks)). This guide covers what they can't: how code should read.
@@ -8,9 +8,9 @@ enforce the mechanical rules (see [Checks](#checks)). This guide covers what the
 
 1. **Readable first.** Someone new should understand a function from its name, its signature, and one pass through
    the body.
-2. **One crate per format.** A format's crate depends on `lakebed-core` and on nothing of another format's, so adding
+2. **One crate per format.** A format's crate depends on `lakekit-core` and on nothing of another format's, so adding
    one never touches the others. Formats are shown as they are: no shared model flattens their differences.
-3. **No I/O of our own.** Crates read and write through `lakebed_core::Host`. They never open sockets, files, or
+3. **No I/O of our own.** Crates read and write through `lakekit_core::Host`. They never open sockets, files, or
    threads, so they build for `wasm32-unknown-unknown`.
 4. **One definition of each thing.** Before writing a helper, constant, or type, look for an existing one.
 5. **Behaviour, spec, and tests change together.** A change users can see updates its spec, adds or updates tests, and
@@ -28,7 +28,7 @@ enforce the mechanical rules (see [Checks](#checks)). This guide covers what the
 
 ## Credit
 
-lakebed learns from other projects' ideas, never from copying their code. [PRIOR_ART.md](PRIOR_ART.md) lists the
+lakekit learns from other projects' ideas, never from copying their code. [PRIOR_ART.md](PRIOR_ART.md) lists the
 ideas we took.
 
 - **Never copy code**, whatever its license: not by pasting, and not by translating it into another language.
@@ -38,7 +38,7 @@ ideas we took.
 
 ## Rust
 
-- **Errors:** `lakebed_core::Error`, with the variant that says what a caller can do about it (`NotFound`, `Conflict`,
+- **Errors:** `lakekit_core::Error`, with the variant that says what a caller can do about it (`NotFound`, `Conflict`,
   `CommitUnknown`, `Unsupported`, `Corrupt`). No `unwrap()` outside tests.
 - **Types over strings:** enums and newtypes instead of strings and magic numbers. Parse once at the boundary.
 - **Don't trust files.** Check lengths and offsets before using them, cap allocations, and return an error instead of

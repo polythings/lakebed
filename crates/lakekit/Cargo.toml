@@ -1,5 +1,5 @@
 [package]
-name = "lakebed"
+name = "lakekit"
 description = "Table formats (Apache Iceberg first) read and written without I/O of their own, for WebAssembly and native"
 readme = "../../README.md"
 version.workspace = true
@@ -12,18 +12,18 @@ categories.workspace = true
 
 [features]
 default = ["iceberg"]
-# Apache Iceberg (lakebed-iceberg).
-iceberg = ["dep:lakebed-iceberg"]
+# Apache Iceberg (lakekit-iceberg).
+iceberg = ["dep:lakekit-iceberg"]
 # Writing Iceberg tables.
-iceberg-write = ["iceberg", "lakebed-iceberg/write"]
+iceberg-write = ["iceberg", "lakekit-iceberg/write"]
 # Iceberg schemas as Arrow schemas.
-iceberg-arrow = ["iceberg", "lakebed-iceberg/arrow"]
+iceberg-arrow = ["iceberg", "lakekit-iceberg/arrow"]
 # Iceberg statistics from Parquet footers.
-iceberg-parquet-stats = ["iceberg", "lakebed-iceberg/parquet-stats"]
+iceberg-parquet-stats = ["iceberg", "lakekit-iceberg/parquet-stats"]
 
 [dependencies]
-lakebed-core.workspace = true
-lakebed-iceberg = { workspace = true, optional = true }
+lakekit-core.workspace = true
+lakekit-iceberg = { workspace = true, optional = true }
 
 [package.metadata.docs.rs]
 all-features = true

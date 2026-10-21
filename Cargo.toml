@@ -1,19 +1,19 @@
 [workspace]
 resolver = "2"
-members = ["crates/lakebed-core", "crates/lakebed-iceberg", "crates/lakebed"]
+members = ["crates/lakekit-core", "crates/lakekit-iceberg", "crates/lakekit"]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.99"
 license = "Apache-2.0"
-repository = "https://github.com/polythings/lakebed"
+repository = "https://github.com/polythings/lakekit"
 keywords = ["lakehouse", "iceberg", "wasm", "table-format"]
 categories = ["database-implementations", "wasm"]
 
 [workspace.dependencies]
-lakebed-core = { path = "crates/lakebed-core", version = "0.1.0" }
-lakebed-iceberg = { path = "crates/lakebed-iceberg", version = "0.1.0", default-features = false }
+lakekit-core = { path = "crates/lakekit-core", version = "0.1.0" }
+lakekit-iceberg = { path = "crates/lakekit-iceberg", version = "0.1.0", default-features = false }
 thiserror = "2"
 serde_json = "1"
 apache-avro = { version = "0.22", default-features = false }

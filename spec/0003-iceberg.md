@@ -14,7 +14,7 @@ issues: [1, 2, 3, 4, 5]
 
 ## Summary
 
-`lakebed-iceberg` reads Iceberg tables of format versions 1 to 3 and writes format v2 tables, without I/O of its own
+`lakekit-iceberg` reads Iceberg tables of format versions 1 to 3 and writes format v2 tables, without I/O of its own
 (spec 1). Timelake's WASM reader and writer use it, and lakeglass's table explorer will. It started as Timelake's
 shared writer, made general.
 
@@ -57,8 +57,8 @@ shared writer, made general.
   iceberg-rust's writer records them; decimals become Iceberg's shortest big-endian bytes however Parquet stores them.
   A bound or null count is recorded only when every row group gives it exactly (a row group of nulls only needs no
   bounds): readers take them as covering the whole file, and a partial one would let them skip matching rows.
-- **Interop tests:** iceberg-rust creates a table and appends; lakebed reads it and commits; iceberg-rust reads that
-  version, parses lakebed's manifests, and appends on top; lakebed reads all of it. lakebed's statistics of
+- **Interop tests:** iceberg-rust creates a table and appends; lakekit reads it and commits; iceberg-rust reads that
+  version, parses lakekit's manifests, and appends on top; lakekit reads all of it. lakekit's statistics of
   iceberg-rust's Parquet file equal what iceberg-rust recorded.
 
 **Not yet:** applying partition transforms to values, planning files from filters, writing format v3, writing delete
@@ -74,11 +74,11 @@ files, and catalogs (REST). Each has an issue.
 
 ## Open questions and issues
 
-- [#1](https://github.com/polythings/lakebed/issues/1) Apply partition transforms to values
-- [#2](https://github.com/polythings/lakebed/issues/2) Plan files and row groups from filters
-- [#3](https://github.com/polythings/lakebed/issues/3) Write uuid, fixed and decimal partition values
-- [#4](https://github.com/polythings/lakebed/issues/4) Write format v3 tables
-- [#5](https://github.com/polythings/lakebed/issues/5) Iceberg REST catalogs: here or in lakeglass?
+- [#1](https://github.com/polythings/lakekit/issues/1) Apply partition transforms to values
+- [#2](https://github.com/polythings/lakekit/issues/2) Plan files and row groups from filters
+- [#3](https://github.com/polythings/lakekit/issues/3) Write uuid, fixed and decimal partition values
+- [#4](https://github.com/polythings/lakekit/issues/4) Write format v3 tables
+- [#5](https://github.com/polythings/lakekit/issues/5) Iceberg REST catalogs: here or in lakeglass?
 
 ## History
 

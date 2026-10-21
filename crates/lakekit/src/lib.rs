@@ -3,9 +3,9 @@
 //!
 //! | Feature | Crate |
 //! |---|---|
-//! | `iceberg` (default) | [`iceberg`]: Apache Iceberg (`lakebed-iceberg`) |
+//! | `iceberg` (default) | [`iceberg`]: Apache Iceberg (`lakekit-iceberg`) |
 //! | `iceberg-write`, `iceberg-arrow`, `iceberg-parquet-stats` | its optional parts |
 
-pub use lakebed_core as core;
+pub use lakekit_core as core;
 #[cfg(feature = "iceberg")]
-pub use lakebed_iceberg as iceberg;
+pub use lakekit_iceberg as iceberg;

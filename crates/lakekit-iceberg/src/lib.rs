@@ -1,5 +1,5 @@
 //! Apache Iceberg table metadata, manifests and commits, with no I/O of its own: everything is read
-//! and written through a [`Host`](lakebed_core::Host) the application implements, so the crate
+//! and written through a [`Host`](lakekit_core::Host) the application implements, so the crate
 //! builds for `wasm32-unknown-unknown` (browsers, Cloudflare Workers) as well as native targets.
 //!
 //! - Reading (always): table metadata of format versions 1 to 3 ([`Metadata`]), schemas and
@@ -11,11 +11,11 @@
 //! - `parquet-stats`: a data file's Iceberg statistics from its Parquet footer.
 //!
 //! ```
-//! use lakebed_iceberg::{Datum, PrimitiveType};
+//! use lakekit_iceberg::{Datum, PrimitiveType};
 //!
 //! let bound = Datum::from_bytes(&PrimitiveType::Long, &42i64.to_le_bytes())?;
 //! assert_eq!(bound, Datum::Long(42));
-//! # Ok::<(), lakebed_core::Error>(())
+//! # Ok::<(), lakekit_core::Error>(())
 //! ```
 
 #[cfg(feature = "arrow")]
@@ -35,7 +35,7 @@ mod types;
 #[cfg(feature = "write")]
 pub use commit::{Change, CommitHooks, CommitInfo, CommitOptions, Extra, NoHooks, commit};
 pub use datum::{Datum, from_be, minimal_be};
-pub use lakebed_core::{Error, Result};
+pub use lakekit_core::{Error, Result};
 pub use manifest::{
     Content, DataFile, Entry, FieldSummary, ManifestContent, ManifestFile, Status, read_manifest, read_manifest_list,
 };
@@ -76,7 +76,7 @@ fn corrupt(msg: impl Into<String>) -> Error {
     Error::Corrupt(msg.into())
 }
 
-/// Runs a future whose host calls complete at once ([`lakebed_core::MemoryHost`]'s do).
+/// Runs a future whose host calls complete at once ([`lakekit_core::MemoryHost`]'s do).
 #[cfg(test)]
 fn block_on<F: std::future::Future>(f: F) -> F::Output {
     let mut cx = std::task::Context::from_waker(std::task::Waker::noop());

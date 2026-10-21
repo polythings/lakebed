@@ -1,11 +1,11 @@
-# lakebed
+# lakekit
 
 Table formats read and written without I/O of their own, in Rust, for WebAssembly and native targets. Each format's
 metadata (Apache Iceberg first) is parsed and written by plain code that asks a `Host` for bytes: the application
 implements the host over its object store, so the same crate runs in a browser, a Cloudflare Worker, a CLI, or a
 server.
 
-lakebed is what [Timelake](https://github.com/polythings/timelake) and [lakeglass](https://github.com/polythings/lakeglass)
+lakekit is what [Timelake](https://github.com/polythings/timelake) and [lakeglass](https://github.com/polythings/lakeglass)
 share. The official Rust crates for these formats build on tokio and HTTP clients, which don't compile to
 `wasm32-unknown-unknown`.
 
@@ -13,9 +13,9 @@ share. The official Rust crates for these formats build on tokio and HTTP client
 
 | Crate | What it does |
 |---|---|
-| [`lakebed-core`](crates/lakebed-core) | The `Host` trait (ranged reads, listing, conditional writes, clock, randomness), errors, an in-memory host |
-| [`lakebed-iceberg`](crates/lakebed-iceberg) | Apache Iceberg: metadata, manifests, and commits |
-| [`lakebed`](crates/lakebed) | Re-exports the format crates, one feature each |
+| [`lakekit-core`](crates/lakekit-core) | The `Host` trait (ranged reads, listing, conditional writes, clock, randomness), errors, an in-memory host |
+| [`lakekit-iceberg`](crates/lakekit-iceberg) | Apache Iceberg: metadata, manifests, and commits |
+| [`lakekit`](crates/lakekit) | Re-exports the format crates, one feature each |
 
 More formats get their own crate as they are added (spec 2).
 
@@ -30,12 +30,12 @@ More formats get their own crate as they are added (spec 2).
 | Schema as an Arrow schema with field ids | Feature `arrow` |
 | A data file's Iceberg statistics from its Parquet footer | Feature `parquet-stats` |
 
-What lakebed writes, iceberg-rust reads, and the other way round: the tests commit to one table with both in turn.
+What lakekit writes, iceberg-rust reads, and the other way round: the tests commit to one table with both in turn.
 
 ```rust
-use lakebed_iceberg::Table;
+use lakekit_iceberg::Table;
 
-async fn files<H: lakebed_core::Host>(host: &H) -> lakebed_core::Result<usize> {
+async fn files<H: lakekit_core::Host>(host: &H) -> lakekit_core::Result<usize> {
     let mut table = Table::load(host, "s3://bucket/warehouse/db/events").await?;
     Ok(table.live_files(host).await?.len())
 }

@@ -1,7 +1,7 @@
 # Agent instructions
 
-lakebed: table formats (Apache Iceberg first) read and written in Rust without I/O of their own, for WebAssembly and
-native targets. One crate per format (`crates/lakebed-<format>`) on a shared I/O boundary (`crates/lakebed-core`).
+lakekit: table formats (Apache Iceberg first) read and written in Rust without I/O of their own, for WebAssembly and
+native targets. One crate per format (`crates/lakekit-<format>`) on a shared I/O boundary (`crates/lakekit-core`).
 Timelake and lakeglass use it.
 
 ## Before changing code

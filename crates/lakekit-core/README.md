@@ -1,6 +1,6 @@
-# lakebed-core
+# lakekit-core
 
-The I/O boundary of [lakebed](https://github.com/polythings/lakebed)'s table format crates. Format crates do no I/O of
+The I/O boundary of [lakekit](https://github.com/polythings/lakekit)'s table format crates. Format crates do no I/O of
 their own: they call a `Host` that the application implements over its object store, clock, and randomness, so they
 build for `wasm32-unknown-unknown` and native targets alike.
 

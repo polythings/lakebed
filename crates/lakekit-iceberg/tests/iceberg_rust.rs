@@ -1,6 +1,6 @@
-//! lakebed-iceberg and iceberg-rust read each other's tables: a table iceberg-rust creates and
-//! appends to, lakebed reads and commits to; iceberg-rust reads lakebed's commit and appends on top
-//! of it; and lakebed computes the statistics iceberg-rust's Parquet writer records. Everything
+//! lakekit-iceberg and iceberg-rust read each other's tables: a table iceberg-rust creates and
+//! appends to, lakekit reads and commits to; iceberg-rust reads lakekit's commit and appends on top
+//! of it; and lakekit computes the statistics iceberg-rust's Parquet writer records. Everything
 //! runs in memory.
 #![cfg(all(feature = "write", feature = "arrow", feature = "parquet-stats"))]
 #![expect(clippy::unwrap_used, reason = "test code")]
@@ -21,9 +21,9 @@ use iceberg::spec::{
 use iceberg::transaction::{ApplyTransactionAction, Transaction};
 use iceberg::writer::file_writer::{FileWriter as _, FileWriterBuilder, ParquetWriterBuilder};
 use iceberg::{Catalog, CatalogBuilder, MemoryCatalog, NamespaceIdent, TableCreation, TableIdent};
-use lakebed_core::{Error, Host, Listed, MemoryHost, MemoryUpload};
-use lakebed_iceberg::stats::ParquetStats;
-use lakebed_iceberg::{Change, CommitOptions, DataFile, Datum, Entry, NoHooks, Status, Table, commit};
+use lakekit_core::{Error, Host, Listed, MemoryHost, MemoryUpload};
+use lakekit_iceberg::stats::ParquetStats;
+use lakekit_iceberg::{Change, CommitOptions, DataFile, Datum, Entry, NoHooks, Status, Table, commit};
 use parquet::arrow::ArrowWriter;
 use parquet::file::metadata::ParquetMetaDataReader;
 use parquet::file::properties::WriterProperties;
@@ -46,45 +46,45 @@ fn store(e: impl std::fmt::Display) -> Error {
 impl Host for IoHost {
     type Upload = MemoryUpload;
 
-    async fn get(&self, uri: &str) -> lakebed_core::Result<Option<Vec<u8>>> {
+    async fn get(&self, uri: &str) -> lakekit_core::Result<Option<Vec<u8>>> {
         if !self.io.exists(uri).await.map_err(store)? {
             return Ok(None);
         }
         Ok(Some(self.io.new_input(uri).map_err(store)?.read().await.map_err(store)?.to_vec()))
     }
 
-    async fn get_range(&self, uri: &str, start: u64, len: u64) -> lakebed_core::Result<Vec<u8>> {
+    async fn get_range(&self, uri: &str, start: u64, len: u64) -> lakekit_core::Result<Vec<u8>> {
         let bytes = self.get(uri).await?.ok_or_else(|| Error::NotFound(uri.to_string()))?;
         let start = usize::try_from(start).map_err(store)?.min(bytes.len());
         let end = start.saturating_add(usize::try_from(len).map_err(store)?).min(bytes.len());
         Ok(bytes[start..end].to_vec())
     }
 
-    async fn exists(&self, uri: &str) -> lakebed_core::Result<bool> {
+    async fn exists(&self, uri: &str) -> lakekit_core::Result<bool> {
         self.io.exists(uri).await.map_err(store)
     }
 
-    async fn put(&self, uri: &str, bytes: Vec<u8>) -> lakebed_core::Result<()> {
+    async fn put(&self, uri: &str, bytes: Vec<u8>) -> lakekit_core::Result<()> {
         self.io.new_output(uri).map_err(store)?.write(Bytes::from(bytes)).await.map_err(store)
     }
 
     /// The tests run one writer at a time, so checking first is enough.
-    async fn put_if_absent(&self, uri: &str, bytes: Vec<u8>) -> lakebed_core::Result<bool> {
+    async fn put_if_absent(&self, uri: &str, bytes: Vec<u8>) -> lakekit_core::Result<bool> {
         if self.exists(uri).await? {
             return Ok(false);
         }
         self.put(uri, bytes).await.map(|()| true)
     }
 
-    fn upload(&self, _: &str) -> impl Future<Output = lakebed_core::Result<MemoryUpload>> {
+    fn upload(&self, _: &str) -> impl Future<Output = lakekit_core::Result<MemoryUpload>> {
         ready(Err(Error::Unsupported("uploads".into())))
     }
 
-    fn list(&self, _: &str) -> impl Future<Output = lakebed_core::Result<Vec<Listed>>> {
+    fn list(&self, _: &str) -> impl Future<Output = lakekit_core::Result<Vec<Listed>>> {
         ready(Err(Error::Unsupported("listing".into())))
     }
 
-    async fn delete(&self, uris: &[String]) -> lakebed_core::Result<()> {
+    async fn delete(&self, uris: &[String]) -> lakekit_core::Result<()> {
         for uri in uris {
             self.io.delete(uri).await.map_err(store)?;
         }
@@ -151,7 +151,7 @@ async fn write_theirs(table: &iceberg::table::Table, batch: &RecordBatch, name: 
     files.remove(0).partition(Struct::from_iter([Some(Literal::int(day))])).partition_spec_id(0).build().unwrap()
 }
 
-/// Writes `batch` with arrow-rs's Parquet writer; returns lakebed's data file.
+/// Writes `batch` with arrow-rs's Parquet writer; returns lakekit's data file.
 async fn write_ours(host: &IoHost, table: &Table, batch: &RecordBatch, name: &str, day: i32) -> DataFile {
     let mut bytes = vec![];
     let mut writer = ArrowWriter::try_new(&mut bytes, batch.schema(), None).unwrap();
@@ -173,7 +173,7 @@ async fn append_theirs(
     tx.commit(catalog).await.unwrap()
 }
 
-/// The data file iceberg-rust records, as lakebed records it.
+/// The data file iceberg-rust records, as lakekit records it.
 fn as_ours(f: &IceDataFile) -> DataFile {
     let bytes =
         |m: &HashMap<i32, iceberg::spec::Datum>| m.iter().map(|(k, d)| (*k, d.to_bytes().unwrap().to_vec())).collect();
@@ -221,7 +221,7 @@ async fn live(host: &IoHost, metadata_file: &str) -> (Table, Vec<Entry>) {
 }
 
 #[tokio::test]
-async fn tables_round_trip_between_lakebed_and_iceberg_rust() {
+async fn tables_round_trip_between_lakekit_and_iceberg_rust() {
     let catalog = MemoryCatalogBuilder::default()
         .load("memory", HashMap::from([("warehouse".to_string(), "memory://wh".to_string())]))
         .await
@@ -241,7 +241,7 @@ async fn tables_round_trip_between_lakebed_and_iceberg_rust() {
     let host = IoHost { io: io.clone(), memory: MemoryHost::new(T0 / 1000) };
     let arrow = Arc::new(iceberg::arrow::schema_to_arrow_schema(table.metadata().current_schema()).unwrap());
 
-    // iceberg-rust appends; lakebed reads the file as iceberg-rust records it.
+    // iceberg-rust appends; lakekit reads the file as iceberg-rust records it.
     let first = batch(&arrow, 0, 5_000);
     let theirs = write_theirs(&table, &first, "theirs-1", 20_454).await;
     let table = append_theirs(&catalog, &table, theirs.clone()).await;
@@ -250,13 +250,13 @@ async fn tables_round_trip_between_lakebed_and_iceberg_rust() {
     assert_eq!(*files[0].file, as_ours(&theirs));
     assert_eq!((files[0].status, files[0].sequence_number, files[0].file_sequence_number), (Status::Added, 1, 1));
 
-    // lakebed computes the statistics iceberg-rust's writer recorded, from the file's footer.
+    // lakekit computes the statistics iceberg-rust's writer recorded, from the file's footer.
     let bytes = io.new_input(theirs.file_path()).unwrap().read().await.unwrap();
     let footer = ParquetMetaDataReader::new().parse_and_finish(&bytes).unwrap();
     let stats = ParquetStats::new(&footer, bytes.len() as u64, nan_counts(&first));
     assert_eq!(stats.data_file(theirs.file_path().into(), vec![Some(Datum::Date(20_454))]), as_ours(&theirs));
 
-    // lakebed commits on top; iceberg-rust reads the new version and lakebed's manifests.
+    // lakekit commits on top; iceberg-rust reads the new version and lakekit's manifests.
     let ours = write_ours(&host, &base, &batch(&arrow, 1, 3_000), "ours-1", 20_455).await;
     let (committed, info) = commit(
         &host,
@@ -279,7 +279,7 @@ async fn tables_round_trip_between_lakebed_and_iceberg_rust() {
     let (entries, _) = Manifest::parse_avro(&manifest).unwrap().into_parts();
     assert_eq!(as_ours(&entries[0].data_file), ours);
 
-    // iceberg-rust appends on top of lakebed's version; lakebed reads all three files. Its memory
+    // iceberg-rust appends on top of lakekit's version; lakekit reads all three files. Its memory
     // catalog only names metadata files `NNNNN-<uuid>.metadata.json`, so it gets a copy so named.
     let ident = TableIdent::from_strs(["ns", "registered"]).unwrap();
     let copy =
