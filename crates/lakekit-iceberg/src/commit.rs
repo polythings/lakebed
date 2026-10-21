@@ -6,12 +6,12 @@
 //! Applications extend a commit through [`CommitHooks`]: files of their own written with the
 //! snapshot, summary properties, a check that skips a commit already made, and how to reload.
 
+use core::time::Duration;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt;
 use std::future::Future;
 use std::hash::BuildHasher;
 use std::sync::Arc;
-use std::time::Duration;
 
 use lakekit_core::{Clock, Random, Rng, Services, Store, uuid_v4};
 
