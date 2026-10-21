@@ -1,12 +1,11 @@
 use uuid::Builder;
 
-use crate::{Clock, Random};
+use crate::{Clock, Random, Rng};
 
 /// A random UUID (version 4) from `random`.
 pub fn uuid_v4(random: &impl Random) -> String {
     let mut bytes = [0u8; 16];
-    bytes[..8].copy_from_slice(&random.next_u64().to_be_bytes());
-    bytes[8..].copy_from_slice(&random.next_u64().to_be_bytes());
+    random.rng().fill_bytes(&mut bytes);
     Builder::from_random_bytes(bytes).into_uuid().to_string()
 }
 
@@ -15,8 +14,7 @@ pub fn uuid_v4(random: &impl Random) -> String {
 pub fn uuid_v7(source: &(impl Clock + Random)) -> String {
     let millis = u64::try_from(source.now_ms()).unwrap_or(0);
     let mut bytes = [0u8; 10];
-    bytes[..8].copy_from_slice(&source.next_u64().to_be_bytes());
-    bytes[8..].copy_from_slice(&source.next_u64().to_be_bytes()[..2]);
+    source.rng().fill_bytes(&mut bytes);
     Builder::from_unix_timestamp_millis(millis, &bytes).into_uuid().to_string()
 }
 

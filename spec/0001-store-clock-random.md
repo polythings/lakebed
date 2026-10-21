@@ -29,7 +29,8 @@ browser, a Cloudflare Worker, a CLI, or a server, and tests run against memory.
   native implementations, and adds what is lakekit's: the error type, the identifiers, and `Resources`.
 - **`Clock`:** `now` and `now_ms`, and `sleep(Duration)`: commit timestamps, time-ordered file names, and the wait
   between commit attempts.
-- **`Random`:** `next_u64`: snapshot ids, file names, and the jitter between commit attempts.
+- **`Random`:** `rng()`, a generator of the caller's own: snapshot ids, file names, and the jitter between commit
+  attempts.
 - **Who needs what:** readers need only a `Store`; commits need `Store + Clock + Random`.
 - **`Resources`:** a store, a clock, and a random source as one value (`Resources::new(store, clock, random)`), for APIs
   that need all three, built with loko's `#[derive(Provides)]`. Any type that is all three (a JavaScript host, an
@@ -71,3 +72,4 @@ None open.
   `MemoryResources` bundles it with a test clock and seeded randomness.
 - 2026-10-21: `Services` and `MemoryServices` are `Resources` and `MemoryResources`, as loko calls the things it
   passes resources; `Resources` uses loko's `#[derive(Provides)]`.
+- 2026-10-21: loko's `Random` hands out generators (`rng()`); lakekit draws its identifiers and jitter from them.

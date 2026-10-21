@@ -40,6 +40,6 @@ pub use loko_clock::TokioClock;
 pub use loko_clock::{Clock, HasClock, TestClock};
 #[cfg(all(feature = "getrandom", not(all(target_arch = "wasm32", target_os = "unknown"))))]
 pub use loko_random::OsRandom;
-pub use loko_random::{HasRandom, Random, SeededRandom};
+pub use loko_random::{CryptoRng, HasRandom, Random, Rng, SeededRandom, SeededRng};
 pub use loko_store::{Error as StoreError, HasStore, Listed, MemoryStore, MemoryUpload, Store, Upload};
 pub use resources::{MemoryResources, Resources};

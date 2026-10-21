@@ -1743,7 +1743,7 @@ checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 [[package]]
 name = "loko-clock"
 version = "0.2.0"
-source = "git+https://github.com/polythings/loko?rev=009756afed9566f22b6b25bb843eb8761a3bc1b3#009756afed9566f22b6b25bb843eb8761a3bc1b3"
+source = "git+https://github.com/polythings/loko?rev=112fb3e81114aef2c6a060eb1c00366cf4927f5b#112fb3e81114aef2c6a060eb1c00366cf4927f5b"
 dependencies = [
  "loko-macros",
  "tokio",
@@ -1752,7 +1752,7 @@ dependencies = [
 [[package]]
 name = "loko-macros"
 version = "0.2.0"
-source = "git+https://github.com/polythings/loko?rev=009756afed9566f22b6b25bb843eb8761a3bc1b3#009756afed9566f22b6b25bb843eb8761a3bc1b3"
+source = "git+https://github.com/polythings/loko?rev=112fb3e81114aef2c6a060eb1c00366cf4927f5b#112fb3e81114aef2c6a060eb1c00366cf4927f5b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1762,7 +1762,7 @@ dependencies = [
 [[package]]
 name = "loko-object-store"
 version = "0.2.0"
-source = "git+https://github.com/polythings/loko?rev=009756afed9566f22b6b25bb843eb8761a3bc1b3#009756afed9566f22b6b25bb843eb8761a3bc1b3"
+source = "git+https://github.com/polythings/loko?rev=112fb3e81114aef2c6a060eb1c00366cf4927f5b#112fb3e81114aef2c6a060eb1c00366cf4927f5b"
 dependencies = [
  "futures-util",
  "loko-store",
@@ -1773,16 +1773,17 @@ dependencies = [
 [[package]]
 name = "loko-random"
 version = "0.2.0"
-source = "git+https://github.com/polythings/loko?rev=009756afed9566f22b6b25bb843eb8761a3bc1b3#009756afed9566f22b6b25bb843eb8761a3bc1b3"
+source = "git+https://github.com/polythings/loko?rev=112fb3e81114aef2c6a060eb1c00366cf4927f5b#112fb3e81114aef2c6a060eb1c00366cf4927f5b"
 dependencies = [
  "getrandom 0.4.3",
  "loko-macros",
+ "rand_core 0.10.1",
 ]
 
 [[package]]
 name = "loko-store"
 version = "0.2.0"
-source = "git+https://github.com/polythings/loko?rev=009756afed9566f22b6b25bb843eb8761a3bc1b3#009756afed9566f22b6b25bb843eb8761a3bc1b3"
+source = "git+https://github.com/polythings/loko?rev=112fb3e81114aef2c6a060eb1c00366cf4927f5b#112fb3e81114aef2c6a060eb1c00366cf4927f5b"
 dependencies = [
  "loko-macros",
  "thiserror",

@@ -13,7 +13,7 @@ use std::hash::BuildHasher;
 use std::sync::Arc;
 use std::time::Duration;
 
-use lakekit_core::{Clock, Random, Store, uuid_v4};
+use lakekit_core::{Clock, Random, Rng, Store, uuid_v4};
 
 use crate::manifest::{
     DataFile, Entry, ManifestContext, ManifestFile, ManifestWrite, Status, manifest_file, write_manifest,
@@ -182,7 +182,7 @@ pub async fn commit<H: Store + Clock + Random, K: CommitHooks<H>, S: BuildHasher
     for attempt in 1..=options.max_attempts {
         if attempt > 1 {
             let (lo, hi) = options.backoff_ms;
-            let ms = (lo + store.next_u64() % hi.saturating_sub(lo).max(1)) * attempt;
+            let ms = (lo + store.rng().next_u64() % hi.saturating_sub(lo).max(1)) * attempt;
             store.sleep(Duration::from_millis(ms)).await;
             base = hooks.reload(store, &base.location).await?;
         }
@@ -230,8 +230,9 @@ pub async fn put_metadata<S: Store>(store: &S, uri: &str, bytes: Vec<u8>) -> Res
 
 /// A snapshot id not in the table yet.
 fn new_snapshot_id(random: &impl Random, base: &Table) -> i64 {
+    let mut rng = random.rng();
     loop {
-        let id = i64::try_from(random.next_u64() >> 1).unwrap_or(1).max(1);
+        let id = i64::try_from(rng.next_u64() >> 1).unwrap_or(1).max(1);
         if !base.metadata.has_snapshot(id) {
             return id;
         }
