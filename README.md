@@ -2,7 +2,7 @@
 
 Table formats read and written without I/O of their own, in Rust, for WebAssembly and native targets. Each format's
 metadata (Apache Iceberg first) is parsed and written by plain code that asks a `Store` for bytes, a `Clock` for the
-time, and a `Random` for random numbers ([loko](https://github.com/polythings/loko)'s services): the application
+time, and a `Random` for random numbers ([loko](https://github.com/polythings/loko)'s resources): the application
 supplies them, so the same crate runs in a browser, a
 Cloudflare Worker, a CLI, or a server.
 
@@ -14,7 +14,7 @@ share. The official Rust crates for these formats build on tokio and HTTP client
 
 | Crate | What it does |
 |---|---|
-| [`lakekit-core`](crates/lakekit-core) | loko's `Store`, `Clock`, and `Random` with their test and native implementations, `Services`, and one error type |
+| [`lakekit-core`](crates/lakekit-core) | loko's `Store`, `Clock`, and `Random` with their test and native implementations, `Resources`, and one error type |
 | [`lakekit-iceberg`](crates/lakekit-iceberg) | Apache Iceberg: metadata, manifests, and commits |
 | [`lakekit`](crates/lakekit) | Re-exports the crates, one feature each, and `loko-object-store` (a `Store` over an `object_store` client) |
 
@@ -46,7 +46,7 @@ async fn files(s3: Arc<dyn object_store::ObjectStore>) -> lakekit_core::Result<u
 }
 ```
 
-Commits also need a `Clock` and a `Random`: `Services::new(store, TokioClock, OsRandom)` natively, the application's
+Commits also need a `Clock` and a `Random`: `Resources::new(store, TokioClock, OsRandom)` natively, the application's
 own in WebAssembly.
 
 ## Development

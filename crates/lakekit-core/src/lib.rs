@@ -2,14 +2,14 @@
 //! they read and write through a [`Store`] the application supplies (an `object_store` client
 //! natively, `fetch` or an R2 binding in WebAssembly), and take the time from a [`Clock`] and random
 //! numbers from a [`Random`], so they build for `wasm32-unknown-unknown` and native targets alike.
-//! The three are [loko](https://github.com/polythings/loko)'s services, re-exported here.
+//! The three are [loko](https://github.com/polythings/loko)'s resources, re-exported here.
 //!
 //! - [`Store`]: get, ranged get, put, put-if-absent (the commit primitive), multipart upload, list,
 //!   delete. `loko-object-store` implements it over `object_store`.
 //! - [`Clock`]: the time and a timer. `TokioClock` (feature `tokio`) is a native one.
 //! - [`Random`]: random numbers. `OsRandom` (feature `getrandom`) is a native one.
-//! - [`Services`]: a store, a clock, and a random source as one value, for APIs that need all three;
-//!   [`MemoryServices`] is all three in memory, for tests.
+//! - [`Resources`]: a store, a clock, and a random source as one value, for APIs that need all three;
+//!   [`MemoryResources`] is all three in memory, for tests.
 //! - [`Error`]: one error type for the format crates, converted from the store's.
 //!
 //! ```
@@ -31,7 +31,7 @@
 
 mod error;
 mod ids;
-mod services;
+mod resources;
 
 pub use error::{Error, Result};
 pub use ids::{uuid_v4, uuid_v7};
@@ -42,4 +42,4 @@ pub use loko_clock::{Clock, HasClock, TestClock};
 pub use loko_random::OsRandom;
 pub use loko_random::{HasRandom, Random, SeededRandom};
 pub use loko_store::{Error as StoreError, HasStore, Listed, MemoryStore, MemoryUpload, Store, Upload};
-pub use services::{MemoryServices, Services};
+pub use resources::{MemoryResources, Resources};

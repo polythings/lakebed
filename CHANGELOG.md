@@ -7,9 +7,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- `lakekit-core`: loko's `Store`, `Clock`, and `Random` services with their test and native implementations
-  (`TokioClock` with feature `tokio`, `OsRandom` with feature `getrandom`); `Services` to pass the three as one;
-  `MemoryServices` for tests; one `Error` type, which a store's error converts into.
+- `lakekit-core`: loko's `Store`, `Clock`, and `Random` resources with their test and native implementations
+  (`TokioClock` with feature `tokio`, `OsRandom` with feature `getrandom`); `Resources` to pass the three as one;
+  `MemoryResources` for tests; one `Error` type, which a store's error converts into.
 - `lakekit` feature `object-store`: a `Store` over an `object_store` client (S3, GCS, Azure, local files, memory),
   from a client or a URL (`loko-object-store`).
 - `lakekit-iceberg`: Iceberg table metadata, schemas, partition specs, manifest lists, and manifests read for format
@@ -28,7 +28,7 @@ versions follow [Semantic Versioning](https://semver.org/).
   (`lakebed-core`, …) until 2026-10-21. Nothing was published under the old names; GitHub redirects the old
   repository URL.
 - The I/O boundary is three traits, `Store` (objects), `Clock` (the time and a timer), and `Random` (random numbers),
-  instead of one `Host`; `MemoryHost` is `MemoryServices`. UUIDs come from the `uuid` crate.
+  instead of one `Host`; `MemoryHost` is `MemoryResources`. UUIDs come from the `uuid` crate.
 - The three traits are [loko](https://github.com/polythings/loko)'s, and `Clock::sleep` takes a `Duration`. The
   `object_store` adapter is `loko-object-store`, re-exported as `lakekit::object_store`; `lakekit-object-store` is
   gone (it was never published).
