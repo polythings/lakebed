@@ -1,0 +1,32 @@
+[package]
+name = "lakebed"
+description = "Table formats (Apache Iceberg first) read and written without I/O of their own, for WebAssembly and native"
+readme = "../../README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+default = ["iceberg"]
+# Apache Iceberg (lakebed-iceberg).
+iceberg = ["dep:lakebed-iceberg"]
+# Writing Iceberg tables.
+iceberg-write = ["iceberg", "lakebed-iceberg/write"]
+# Iceberg schemas as Arrow schemas.
+iceberg-arrow = ["iceberg", "lakebed-iceberg/arrow"]
+# Iceberg statistics from Parquet footers.
+iceberg-parquet-stats = ["iceberg", "lakebed-iceberg/parquet-stats"]
+
+[dependencies]
+lakebed-core.workspace = true
+lakebed-iceberg = { workspace = true, optional = true }
+
+[package.metadata.docs.rs]
+all-features = true
+
+[lints]
+workspace = true

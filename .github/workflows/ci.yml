@@ -1,0 +1,54 @@
+# Checks every push to main and every pull request. Needs no secrets.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  native:
+    name: Native (format, lint, tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install   # from rust-toolchain.toml
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-features --all-targets -- -D warnings
+      - run: cargo test --workspace --all-features
+      # Each feature builds on its own, and with none, without warnings.
+      - name: Features one at a time
+        env:
+          RUSTFLAGS: -D warnings
+        run: |
+          cargo check -p lakebed-iceberg --no-default-features
+          cargo check -p lakebed-iceberg --features write
+          cargo check -p lakebed-iceberg --features arrow
+          cargo check -p lakebed-iceberg --features parquet-stats
+
+  wasm:
+    name: WebAssembly (browser and WASI targets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install   # from rust-toolchain.toml
+      - run: rustup target add wasm32-unknown-unknown wasm32-wasip2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - run: cargo clippy --workspace --all-features --target wasm32-unknown-unknown -- -D warnings
+      - run: cargo build --workspace --all-features --target wasm32-wasip2

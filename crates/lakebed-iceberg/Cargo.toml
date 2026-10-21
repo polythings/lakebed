@@ -1,0 +1,44 @@
+[package]
+name = "lakebed-iceberg"
+description = "Apache Iceberg table metadata, manifests and commits without I/O of its own, for WebAssembly and native"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+default = []
+# Writing: manifests, manifest lists and table metadata updates, and the commit protocol over a host.
+write = []
+# The table schema as an Arrow schema, with Iceberg field ids in the field metadata.
+arrow = ["dep:arrow-schema"]
+# Iceberg's statistics of a data file (counts and bounds per column) from its Parquet footer.
+parquet-stats = ["dep:parquet"]
+
+[dependencies]
+lakebed-core.workspace = true
+apache-avro.workspace = true
+serde_json.workspace = true
+futures-util.workspace = true
+arrow-schema = { workspace = true, optional = true }
+parquet = { workspace = true, optional = true }
+
+# The interop tests check that iceberg-rust reads what this crate writes and the other way round.
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+iceberg.workspace = true
+tokio.workspace = true
+parquet = { workspace = true, features = ["arrow"] }
+arrow-array = "58"
+arrow-schema.workspace = true
+bytes = "1"
+futures = "0.3"
+
+[package.metadata.docs.rs]
+all-features = true
+
+[lints]
+workspace = true
