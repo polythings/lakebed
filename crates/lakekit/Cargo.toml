@@ -20,10 +20,17 @@ iceberg-write = ["iceberg", "lakekit-iceberg/write"]
 iceberg-arrow = ["iceberg", "lakekit-iceberg/arrow"]
 # Iceberg statistics from Parquet footers.
 iceberg-parquet-stats = ["iceberg", "lakekit-iceberg/parquet-stats"]
+# A store over an object_store client (loko-object-store).
+object-store = ["dep:loko-object-store"]
+# TokioClock, a native clock (lakekit-core/tokio).
+tokio = ["lakekit-core/tokio"]
+# OsRandom, the operating system's random numbers (lakekit-core/getrandom).
+getrandom = ["lakekit-core/getrandom"]
 
 [dependencies]
 lakekit-core.workspace = true
 lakekit-iceberg = { workspace = true, optional = true }
+loko-object-store = { workspace = true, optional = true }
 
 [package.metadata.docs.rs]
 all-features = true

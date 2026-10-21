@@ -19,7 +19,7 @@ Timelake and lakeglass use it.
 - **Keep things in sync:** a change in behaviour updates its spec (status, design, history), the tests, and
   `CHANGELOG.md` (under `Unreleased`) in the same commit.
 - **Everything builds for WASM.** Every crate builds for `wasm32-unknown-unknown`: no threads, no blocking I/O, no
-  `std::time`, no C dependencies. All I/O goes through the `Host` trait. CI checks it.
+  `std::time`, no C dependencies. All I/O goes through the `Store`, `Clock`, and `Random` traits. CI checks it.
 - **Readers don't trust files.** Bytes from a store can be anything: check lengths, return errors, never panic.
 - **Interop is tested.** What a format crate writes must read in that format's reference implementation and the other
   way round; the tests show it.

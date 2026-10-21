@@ -2,15 +2,15 @@
 number: 2
 title: One crate per format
 status: in-progress
-updated: 2026-10-20
+updated: 2026-10-21
 versions: [unreleased]
-related: [1, 3]
-issues: [6]
+related: [1, 3, 4]
+issues: [6, 11]
 ---
 
 # 2. One crate per format
 
-**In progress** · updated 2026-10-20 · versions unreleased · milestone: [0.1](milestones/v0-1.md)
+**In progress** · updated 2026-10-21 · versions unreleased · milestone: [0.1](milestones/v0-1.md)
 
 ## Summary
 
@@ -32,6 +32,8 @@ lakeglass reads it; the formats lakeglass explores come next.
 - **Building for WebAssembly:** every crate builds for `wasm32-unknown-unknown` and is checked for `wasm32-wasip2`.
 - **Next formats,** in the order lakeglass needs them: Delta Lake, then Apache Hudi, Apache Paimon, Lance, and
   DuckLake. Each is proposed as its own spec before it is built.
+- **Engines** get adapters the same way, a crate each, if they are built: a DataFusion table provider per format is
+  an open question ([#11](https://github.com/polythings/lakekit/issues/11)).
 
 ## Decisions
 
@@ -44,6 +46,7 @@ lakeglass reads it; the formats lakeglass explores come next.
 ## Open questions and issues
 
 - [#6](https://github.com/polythings/lakekit/issues/6) Which format comes after Iceberg, and in what order?
+- [#11](https://github.com/polythings/lakekit/issues/11) DataFusion table providers (lakekit-datafusion)?
 
 ## History
 

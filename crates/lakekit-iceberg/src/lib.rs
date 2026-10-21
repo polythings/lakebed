@@ -1,6 +1,8 @@
 //! Apache Iceberg table metadata, manifests and commits, with no I/O of its own: everything is read
-//! and written through a [`Host`](lakekit_core::Host) the application implements, so the crate
-//! builds for `wasm32-unknown-unknown` (browsers, Cloudflare Workers) as well as native targets.
+//! and written through a [`Store`](lakekit_core::Store) the application supplies, and commits take
+//! the time from a [`Clock`](lakekit_core::Clock) and random numbers from a
+//! [`Random`](lakekit_core::Random), so the crate builds for
+//! `wasm32-unknown-unknown` (browsers, Cloudflare Workers) as well as native targets.
 //!
 //! - Reading (always): table metadata of format versions 1 to 3 ([`Metadata`]), schemas and
 //!   partition specs, manifest lists and manifests with data and delete files ([`read_manifest`]),
@@ -76,7 +78,7 @@ fn corrupt(msg: impl Into<String>) -> Error {
     Error::Corrupt(msg.into())
 }
 
-/// Runs a future whose host calls complete at once ([`lakekit_core::MemoryHost`]'s do).
+/// Runs a future whose store calls complete at once ([`lakekit_core::MemoryStore`]'s do).
 #[cfg(test)]
 fn block_on<F: std::future::Future>(f: F) -> F::Output {
     let mut cx = std::task::Context::from_waker(std::task::Waker::noop());

@@ -41,13 +41,13 @@ shared writer, made general.
   any metadata file a catalog names (`from_metadata_file`); manifests and live files.
 - **Writing (feature `write`):** format v2 data manifests and manifest lists in the layout iceberg-rust writes, and
   metadata updates (`with_snapshot`, `without_snapshots`) made as iceberg-rust's builder makes them, with the metadata
-  log trimmed to `write.metadata.previous-versions-max`; the current snapshot can't be removed. Partition values of type uuid, fixed, and decimal are refused
-  for now.
+  log trimmed to `write.metadata.previous-versions-max`; the current snapshot can't be removed. Partition values of
+  type uuid, fixed, and decimal are refused for now.
 - **Commits (feature `write`):** upload a snapshot's files, then write `v<N+1>.metadata.json` only if absent; on a
   lost race, reload and try again on the newer version, deleting the lost attempt's files; when the outcome is
   unknown (a conditional put that failed and can't be read back), delete nothing. Appends, replacements that keep data
-  sequence numbers (compaction, one sequence number per added file), and deletions; manifests merge once there would be more than `merge_manifests_at`.
-  Iceberg's summary counters are kept. A writer whose clock is behind the table's last update dates its commit at that
+  sequence numbers (compaction, one sequence number per added file), and deletions; manifests merge once there would be
+  more than `merge_manifests_at`. Iceberg's summary counters are kept. A writer whose clock is behind the table's last update dates its commit at that
   update, so the snapshot log stays in order (iceberg-rust refuses tables whose log isn't).
 - **Options and hooks:** `CommitOptions` (`max_attempts` 10, `backoff_ms` 5–50 times the attempt, `merge_manifests_at`
   8, `write_version_hint` on) and `CommitHooks` (`reload`, `skip` for idempotent retries, `extra` for files and

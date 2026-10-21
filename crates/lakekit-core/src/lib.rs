@@ -1,18 +1,26 @@
 //! The I/O boundary shared by lakekit's table format crates. Format crates do no I/O of their own:
-//! they read and write through a [`Host`] the application implements over its object store (an
-//! `object_store` client natively, `fetch` or an R2 binding in WebAssembly), so they build for
-//! `wasm32-unknown-unknown` and native targets alike.
+//! they read and write through a [`Store`] the application supplies (an `object_store` client
+//! natively, `fetch` or an R2 binding in WebAssembly), and take the time from a [`Clock`] and random
+//! numbers from a [`Random`], so they build for `wasm32-unknown-unknown` and native targets alike.
+//! The three are [loko](https://github.com/polythings/loko)'s services, re-exported here.
+//!
+//! - [`Store`]: get, ranged get, put, put-if-absent (the commit primitive), multipart upload, list,
+//!   delete. `loko-object-store` implements it over `object_store`.
+//! - [`Clock`]: the time and a timer. `TokioClock` (feature `tokio`) is a native one.
+//! - [`Random`]: random numbers. `OsRandom` (feature `getrandom`) is a native one.
+//! - [`Services`]: a store, a clock, and a random source, borrowed, for APIs that need all three.
+//! - [`Error`]: one error type for the format crates, converted from the store's.
 //!
 //! ```
-//! use lakekit_core::{Host, MemoryHost};
+//! use lakekit_core::{MemoryStore, Store};
 //!
 //! # block_on(async {
-//! let host = MemoryHost::new(0);
-//! host.put("memory://t/a", b"x".to_vec()).await?;
-//! assert!(host.exists("memory://t/a").await?);
+//! let store = MemoryStore::new();
+//! store.put("memory://t/a", b"x".to_vec()).await?;
+//! assert!(store.exists("memory://t/a").await?);
 //! # Ok::<(), lakekit_core::Error>(())
 //! # }).unwrap();
-//! # // MemoryHost's futures are ready at once, so one poll runs them.
+//! # // MemoryStore's futures are ready at once, so one poll runs them.
 //! # fn block_on<F: std::future::Future>(f: F) -> F::Output {
 //! #     let mut cx = std::task::Context::from_waker(std::task::Waker::noop());
 //! #     let mut f = std::pin::pin!(f);
@@ -21,11 +29,16 @@
 //! ```
 
 mod error;
-mod host;
-mod memory;
-mod uuid;
+mod ids;
+mod services;
 
 pub use error::{Error, Result};
-pub use host::{Host, Listed, Upload};
-pub use memory::{MemoryHost, MemoryUpload};
-pub use uuid::{uuid_v4, uuid_v7};
+pub use ids::{uuid_v4, uuid_v7};
+#[cfg(all(feature = "tokio", not(target_arch = "wasm32")))]
+pub use loko_clock::TokioClock;
+pub use loko_clock::{Clock, TestClock};
+#[cfg(all(feature = "getrandom", not(all(target_arch = "wasm32", target_os = "unknown"))))]
+pub use loko_random::OsRandom;
+pub use loko_random::{CryptoRng, Random, Rng, SeededRandom, SeededRng};
+pub use loko_store::{Error as StoreError, Listed, MemoryStore, MemoryUpload, Store, Upload};
+pub use services::Services;
