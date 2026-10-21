@@ -5,18 +5,39 @@ use loko_store::{HasStore, MemoryStore, Store};
 /// A store, a clock, and a random source as one value, for APIs that need all three (commits):
 /// `Resources::new(ObjectStoreAdapter::new(…), TokioClock, OsRandom)`. Any type that is all three
 /// works as well: a JavaScript host, or an application's own `#[loko::bundle]` struct.
-#[loko_macros::bundle]
 #[derive(Clone, Debug, Default)]
 pub struct Resources<S, C, R> {
     /// The store.
-    #[loko_macros::has(Store)]
     pub store: S,
     /// The clock.
-    #[loko_macros::has(Clock)]
     pub clock: C,
     /// The random source.
-    #[loko_macros::has(Random)]
     pub random: R,
+}
+
+// The three impls `#[loko::bundle]` would write, by hand, so lakekit needs no macros.
+impl<S: Store, C, R> HasStore for Resources<S, C, R> {
+    type Store = S;
+
+    fn store(&self) -> &S {
+        &self.store
+    }
+}
+
+impl<S, C: Clock, R> HasClock for Resources<S, C, R> {
+    type Clock = C;
+
+    fn clock(&self) -> &C {
+        &self.clock
+    }
+}
+
+impl<S, C, R: Random> HasRandom for Resources<S, C, R> {
+    type Random = R;
+
+    fn random(&self) -> &R {
+        &self.random
+    }
 }
 
 impl<S, C, R> Resources<S, C, R> {

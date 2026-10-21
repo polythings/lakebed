@@ -33,7 +33,7 @@ browser, a Cloudflare Worker, a CLI, or a server, and tests run against memory.
   attempts.
 - **Who needs what:** readers need only a `Store`; commits need `Store + Clock + Random`.
 - **`Resources`:** a store, a clock, and a random source as one value (`Resources::new(store, clock, random)`), for APIs
-  that need all three, built with loko's `#[loko::bundle]`. Any type that is all three (a JavaScript host, an
+  that need all three: it implements loko's `HasStore`, `HasClock`, and `HasRandom`, so it is all three. Any type that is all three (a JavaScript host, an
   application's own bundle) needs no wrapper.
 - **Native implementations:** `TokioClock` (feature `tokio`: the system clock and tokio's timer, native targets) and
   `OsRandom` (feature `getrandom`: the operating system's generator, native targets and WASI).
@@ -71,5 +71,5 @@ None open.
 - 2026-10-21: the traits come from loko (D14); `Clock::sleep` takes a `Duration`; `MemoryStore` is only a store, and
   `MemoryResources` bundles it with a test clock and seeded randomness.
 - 2026-10-21: `Services` and `MemoryServices` are `Resources` and `MemoryResources`, as loko calls the things it
-  passes resources; `Resources` uses loko's `#[loko::bundle]`.
+  passes resources; `Resources` implements loko's `Has` traits.
 - 2026-10-21: loko's `Random` hands out generators (`rng()`); lakekit draws its identifiers and jitter from them.

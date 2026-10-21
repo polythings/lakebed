@@ -21,7 +21,6 @@ getrandom = ["loko-random/getrandom"]
 loko-store.workspace = true
 loko-clock.workspace = true
 loko-random.workspace = true
-loko-macros.workspace = true
 thiserror.workspace = true
 uuid = { version = "1", default-features = false }
 

@@ -1624,7 +1624,6 @@ name = "lakekit-core"
 version = "0.1.0"
 dependencies = [
  "loko-clock",
- "loko-macros",
  "loko-random",
  "loko-store",
  "thiserror",
@@ -1743,26 +1742,15 @@ checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 [[package]]
 name = "loko-clock"
 version = "0.2.0"
-source = "git+https://github.com/polythings/loko?rev=4f258adbf5c44c6c6d499ea9440ba1dda84e2ddc#4f258adbf5c44c6c6d499ea9440ba1dda84e2ddc"
+source = "git+https://github.com/polythings/loko?rev=33bfbd045392b957f7310423d55a3813d7736673#33bfbd045392b957f7310423d55a3813d7736673"
 dependencies = [
- "loko-macros",
  "tokio",
-]
-
-[[package]]
-name = "loko-macros"
-version = "0.2.0"
-source = "git+https://github.com/polythings/loko?rev=4f258adbf5c44c6c6d499ea9440ba1dda84e2ddc#4f258adbf5c44c6c6d499ea9440ba1dda84e2ddc"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.119",
 ]
 
 [[package]]
 name = "loko-object-store"
 version = "0.2.0"
-source = "git+https://github.com/polythings/loko?rev=4f258adbf5c44c6c6d499ea9440ba1dda84e2ddc#4f258adbf5c44c6c6d499ea9440ba1dda84e2ddc"
+source = "git+https://github.com/polythings/loko?rev=33bfbd045392b957f7310423d55a3813d7736673#33bfbd045392b957f7310423d55a3813d7736673"
 dependencies = [
  "futures-util",
  "loko-store",
@@ -1773,21 +1761,16 @@ dependencies = [
 [[package]]
 name = "loko-random"
 version = "0.2.0"
-source = "git+https://github.com/polythings/loko?rev=4f258adbf5c44c6c6d499ea9440ba1dda84e2ddc#4f258adbf5c44c6c6d499ea9440ba1dda84e2ddc"
+source = "git+https://github.com/polythings/loko?rev=33bfbd045392b957f7310423d55a3813d7736673#33bfbd045392b957f7310423d55a3813d7736673"
 dependencies = [
  "getrandom 0.4.3",
- "loko-macros",
  "rand_core 0.10.1",
 ]
 
 [[package]]
 name = "loko-store"
 version = "0.2.0"
-source = "git+https://github.com/polythings/loko?rev=4f258adbf5c44c6c6d499ea9440ba1dda84e2ddc#4f258adbf5c44c6c6d499ea9440ba1dda84e2ddc"
-dependencies = [
- "loko-macros",
- "thiserror",
-]
+source = "git+https://github.com/polythings/loko?rev=33bfbd045392b957f7310423d55a3813d7736673#33bfbd045392b957f7310423d55a3813d7736673"
 
 [[package]]
 name = "lz4_flex"
