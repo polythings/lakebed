@@ -14,7 +14,8 @@ versions follow [Semantic Versioning](https://semver.org/).
   file-system tables with options (`CommitOptions`) and hooks (`CommitHooks`). A writer whose clock is behind the
   table's last update dates its commit at that update, so the snapshot log stays in order.
 - `lakebed-iceberg` features `arrow` (schemas as Arrow schemas with field ids) and `parquet-stats` (a data file's
-  Iceberg statistics from its Parquet footer).
+  Iceberg statistics from its Parquet footer; a bound or null count only when every row group gives it exactly, and
+  decimals as Iceberg's shortest big-endian bytes).
 - `lakebed`: re-exports the format crates behind a feature each.
 
 The Iceberg code started as Timelake's shared writer (`timelake-format`), made general.

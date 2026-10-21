@@ -180,7 +180,7 @@ impl Metadata {
 
     /// The sequence number the next snapshot gets.
     pub fn next_sequence_number(&self) -> i64 {
-        self.0.get("last-sequence-number").and_then(Value::as_i64).unwrap_or(0) + 1
+        self.0.get("last-sequence-number").and_then(Value::as_i64).unwrap_or(0).saturating_add(1)
     }
 
     /// The current schema's id.
@@ -349,9 +349,13 @@ mod write {
 
         /// This metadata without the snapshots `ids`, as iceberg-rust's builder removes them: refs to
         /// them go, and the snapshot log keeps only what follows the last entry of a removed snapshot
-        /// (so it has no gaps). `previous` is recorded in the metadata log.
+        /// (so it has no gaps). `previous` is recorded in the metadata log. The current snapshot can't be
+        /// removed: the table would have none and read as empty.
         pub fn without_snapshots(&self, ids: &[i64], previous: &str, now_ms: i64) -> Result<Self> {
             self.check_writable()?;
+            if let Some(current) = self.current_snapshot_id().filter(|id| ids.contains(id)) {
+                return Err(crate::Error::Invalid(format!("removing the current snapshot {current}")));
+            }
             let mut m = self.clone();
             m.log_previous(previous, self.last_updated_ms())?;
             let obj = m.object()?;
@@ -440,6 +444,12 @@ mod tests {
     }
 
     #[test]
+    fn a_sequence_number_at_the_limit_saturates() {
+        let m = Metadata::from_json(json!({"format-version": 2, "last-sequence-number": i64::MAX})).unwrap();
+        assert_eq!(m.next_sequence_number(), i64::MAX);
+    }
+
+    #[test]
     fn rejects_unknown_versions() {
         assert!(matches!(Metadata::parse(br#"{"format-version": 4}"#), Err(Error::Unsupported(_))));
         assert!(matches!(Metadata::parse(br#"{"location": "x"}"#), Err(Error::Corrupt(_))));
@@ -468,6 +478,8 @@ mod tests {
         assert_eq!(m.as_json()["unknown-field"]["kept"], true);
         assert_eq!(m.as_json()["refs"]["main"]["snapshot-id"], 5);
 
+        let current = m.without_snapshots(&[1, 5], "v4.metadata.json", 23);
+        assert!(matches!(current, Err(Error::Invalid(_))), "the current snapshot stays");
         let m = m.without_snapshots(&[1, 2], "v4.metadata.json", 23).unwrap();
         assert!(!m.has_snapshot(1) && !m.has_snapshot(2) && m.has_snapshot(3));
         let log: Vec<i64> = m.as_json()["snapshot-log"]

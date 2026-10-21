@@ -171,6 +171,12 @@ pub async fn commit<H: Host, K: CommitHooks<H>, S: BuildHasher>(
     hooks: &mut K,
 ) -> Result<(Table, CommitInfo), K::Error> {
     base.metadata.check_writable()?;
+    if let Change::Replace { added, sequence_numbers, .. } = change
+        && added.len() != sequence_numbers.len()
+    {
+        let (files, numbers) = (added.len(), sequence_numbers.len());
+        return Err(Error::Invalid(format!("replace: {files} added files but {numbers} sequence numbers")).into());
+    }
     let mut base = base;
     for attempt in 1..=options.max_attempts {
         if attempt > 1 {
@@ -645,6 +651,17 @@ mod tests {
         }
         let (t, _) = run(&late, t, &append(vec![file("b", 1, 10)]), &mut NoHooks);
         assert_eq!((t.metadata.current_snapshot().unwrap().timestamp_ms, t.metadata.last_updated_ms()), (5_000, 5_000));
+    }
+
+    #[test]
+    fn a_replace_needs_a_sequence_number_per_added_file() {
+        let host = MemoryHost::new(1_000);
+        let (t, _) = run(&host, create(&host, 2), &append(vec![file("a", 1, 10)]), &mut NoHooks);
+        let removed = files_named(&t, "a.parquet");
+        let change =
+            Change::Replace { removed, added: vec![file("b", 1, 5), file("c", 1, 5)], sequence_numbers: vec![1] };
+        let err = try_run(&host, t, &change, &mut NoHooks);
+        assert!(matches!(err, Err(Error::Invalid(_))), "{err:?}");
     }
 
     #[test]

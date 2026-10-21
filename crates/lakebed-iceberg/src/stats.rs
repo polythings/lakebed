@@ -3,7 +3,7 @@
 //! the writer stored.
 
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use parquet::basic::{LogicalType, Type as PhysicalType};
 use parquet::file::metadata::{ParquetMetaData, RowGroupMetaData};
@@ -38,7 +38,9 @@ pub struct ParquetStats {
 
 impl ParquetStats {
     /// The statistics of a file of `file_size` bytes with footer `metadata`, and the NaN counts the
-    /// writer counted.
+    /// writer counted. A bound or null count is recorded only when every row group gives it exactly:
+    /// readers take them as covering the whole file, and one covering part of it would let them skip
+    /// a file that has matching rows. A row group of nulls only has no bounds and needs none.
     pub fn new(metadata: &ParquetMetaData, file_size: u64, nan_counts: BTreeMap<i32, u64>) -> Self {
         let mut s = Self {
             record_count: u64::try_from(metadata.file_metadata().num_rows()).unwrap_or(0),
@@ -47,28 +49,48 @@ impl ParquetStats {
             split_offsets: metadata.row_groups().iter().filter_map(RowGroupMetaData::file_offset).collect(),
             ..Self::default()
         };
+        let (mut no_lower, mut no_upper, mut no_nulls) = (BTreeSet::new(), BTreeSet::new(), BTreeSet::new());
         for group in metadata.row_groups() {
             for chunk in group.columns() {
                 let Some(id) = field_id(chunk.column_descr()) else { continue };
+                let values = u64::try_from(chunk.num_values()).unwrap_or(0);
                 *s.column_sizes.entry(id).or_default() += u64::try_from(chunk.compressed_size()).unwrap_or(0);
-                *s.value_counts.entry(id).or_default() += u64::try_from(chunk.num_values()).unwrap_or(0);
-                let Some(stats) = chunk.statistics() else { continue };
-                if let Some(nulls) = stats.null_count_opt() {
-                    *s.null_counts.entry(id).or_default() += nulls;
+                *s.value_counts.entry(id).or_default() += values;
+                let Some(stats) = chunk.statistics() else {
+                    no_lower.insert(id);
+                    no_upper.insert(id);
+                    no_nulls.insert(id);
+                    continue;
+                };
+                match stats.null_count_opt() {
+                    Some(nulls) => *s.null_counts.entry(id).or_default() += nulls,
+                    None => {
+                        no_nulls.insert(id);
+                    }
                 }
+                let all_null = stats.null_count_opt() == Some(values);
                 let descr = chunk.column_descr();
-                if stats.min_is_exact()
-                    && let Some(min) = stats.min_bytes_opt().and_then(|b| bound(b, stats, descr))
-                {
-                    keep(&mut s.lower_bounds, id, min, descr, Ordering::Less);
+                let min = stats.min_bytes_opt().filter(|_| stats.min_is_exact()).and_then(|b| bound(b, stats, descr));
+                match min {
+                    Some(min) => keep(&mut s.lower_bounds, id, min, descr, Ordering::Less),
+                    None if !all_null => {
+                        no_lower.insert(id);
+                    }
+                    None => {}
                 }
-                if stats.max_is_exact()
-                    && let Some(max) = stats.max_bytes_opt().and_then(|b| bound(b, stats, descr))
-                {
-                    keep(&mut s.upper_bounds, id, max, descr, Ordering::Greater);
+                let max = stats.max_bytes_opt().filter(|_| stats.max_is_exact()).and_then(|b| bound(b, stats, descr));
+                match max {
+                    Some(max) => keep(&mut s.upper_bounds, id, max, descr, Ordering::Greater),
+                    None if !all_null => {
+                        no_upper.insert(id);
+                    }
+                    None => {}
                 }
             }
         }
+        s.lower_bounds.retain(|id, _| !no_lower.contains(id));
+        s.upper_bounds.retain(|id, _| !no_upper.contains(id));
+        s.null_counts.retain(|id, _| !no_nulls.contains(id));
         s
     }
 
@@ -108,14 +130,19 @@ fn keep(bounds: &mut BTreeMap<i32, Vec<u8>>, id: i32, value: Vec<u8>, descr: &Co
 }
 
 /// A Parquet statistic's plain encoding as an Iceberg bound. They agree for booleans, ints,
-/// longs, floats, doubles, dates, times, timestamps, strings, binary, and fixed; decimals stored as
-/// INT32 or INT64 become big-endian bytes. INT96 has no Iceberg type.
+/// longs, floats, doubles, dates, times, timestamps, strings, binary, and `fixed[L]`. Decimals
+/// become Iceberg's shortest big-endian bytes, whether stored as INT32, INT64, or (big-endian, of
+/// their column's width) as a byte array; one wider than 16 bytes has no bound. INT96 has no
+/// Iceberg type.
 fn bound(plain: &[u8], stats: &Statistics, descr: &ColumnDescriptor) -> Option<Vec<u8>> {
     let decimal = matches!(descr.logical_type_ref(), Some(LogicalType::Decimal { .. }));
     match (stats, decimal) {
         (Statistics::Int96(_), _) => None,
         (Statistics::Int32(_), true) => Some(minimal_be(i128::from(i32::from_le_bytes(plain.try_into().ok()?)))),
         (Statistics::Int64(_), true) => Some(minimal_be(i128::from(i64::from_le_bytes(plain.try_into().ok()?)))),
+        (Statistics::FixedLenByteArray(_) | Statistics::ByteArray(_), true) => {
+            (!plain.is_empty() && plain.len() <= 16).then(|| minimal_be(from_be(plain)))
+        }
         _ => Some(plain.to_vec()),
     }
 }
@@ -145,4 +172,76 @@ fn compare(a: &[u8], b: &[u8], descr: &ColumnDescriptor) -> Ordering {
 
 fn le<const N: usize>(bytes: &[u8]) -> Option<[u8; N]> {
     bytes.try_into().ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    use arrow_array::{ArrayRef, Decimal128Array, Int64Array, RecordBatch};
+    use arrow_schema::{DataType, Field, Schema};
+    use parquet::arrow::ArrowWriter;
+    use parquet::file::properties::WriterProperties;
+
+    use super::*;
+
+    fn field(name: &str, ty: DataType, id: i32) -> Field {
+        Field::new(name, ty, true).with_metadata(HashMap::from([("PARQUET:field_id".to_string(), id.to_string())]))
+    }
+
+    /// A file of `columns` (field ids 1, 2, …) in row groups of `rows` rows; its footer.
+    fn write(columns: Vec<(Field, ArrayRef)>, rows: usize) -> ParquetMetaData {
+        let (fields, arrays): (Vec<Field>, Vec<ArrayRef>) = columns.into_iter().unzip();
+        let batch = RecordBatch::try_new(Arc::new(Schema::new(fields)), arrays).unwrap();
+        let props = WriterProperties::builder().set_max_row_group_row_count(Some(rows)).build();
+        let mut writer = ArrowWriter::try_new(vec![], batch.schema(), Some(props)).unwrap();
+        writer.write(&batch).unwrap();
+        writer.close().unwrap()
+    }
+
+    #[test]
+    fn bounds_need_every_row_group() {
+        let metadata = write(
+            vec![
+                (field("v", DataType::Int64, 1), Arc::new(Int64Array::from(vec![1, 2, 3, 4]))),
+                (field("n", DataType::Int64, 2), Arc::new(Int64Array::from(vec![Some(5), None, None, None]))),
+            ],
+            2,
+        );
+        let s = ParquetStats::new(&metadata, 0, BTreeMap::new());
+        assert_eq!(
+            (s.lower_bounds[&1].as_slice(), s.upper_bounds[&1].as_slice()),
+            (&1i64.to_le_bytes()[..], &4i64.to_le_bytes()[..])
+        );
+        // The second row group is all nulls: it has no bounds and doesn't need any.
+        assert_eq!(
+            (s.lower_bounds[&2].as_slice(), s.upper_bounds[&2].as_slice()),
+            (&5i64.to_le_bytes()[..], &5i64.to_le_bytes()[..])
+        );
+        assert_eq!((s.null_counts[&1], s.null_counts[&2]), (0, 3));
+
+        // Without statistics for one row group, the others' bounds and nulls don't cover the file.
+        let mut builder = metadata.into_builder();
+        let mut groups = builder.take_row_groups();
+        let stripped = groups[1].columns().iter().map(|c| c.clone().into_builder().clear_statistics().build().unwrap());
+        groups[1] = groups[1].clone().into_builder().set_column_metadata(stripped.collect()).build().unwrap();
+        let s = ParquetStats::new(&builder.set_row_groups(groups).build(), 0, BTreeMap::new());
+        assert!(s.lower_bounds.is_empty() && s.upper_bounds.is_empty() && s.null_counts.is_empty(), "{s:?}");
+        assert_eq!(s.value_counts[&1], 4, "counts don't depend on statistics");
+    }
+
+    #[test]
+    fn decimal_byte_array_bounds_are_minimal() {
+        // decimal(20, 2) is a 9-byte fixed array in Parquet; Iceberg keeps the shortest bytes.
+        let values = Decimal128Array::from(vec![-150, 12_345]).with_precision_and_scale(20, 2).unwrap();
+        let metadata = write(vec![(field("d", DataType::Decimal128(20, 2), 1), Arc::new(values))], 10);
+        let s = ParquetStats::new(&metadata, 0, BTreeMap::new());
+        assert_eq!(s.lower_bounds[&1], minimal_be(-150));
+        assert_eq!(s.upper_bounds[&1], minimal_be(12_345));
+        assert_eq!(
+            Datum::from_bytes(&crate::PrimitiveType::Decimal { precision: 20, scale: 2 }, &s.lower_bounds[&1]).unwrap(),
+            Datum::Decimal { unscaled: -150, precision: 20, scale: 2 }
+        );
+    }
 }

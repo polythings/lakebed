@@ -41,12 +41,12 @@ shared writer, made general.
   any metadata file a catalog names (`from_metadata_file`); manifests and live files.
 - **Writing (feature `write`):** format v2 data manifests and manifest lists in the layout iceberg-rust writes, and
   metadata updates (`with_snapshot`, `without_snapshots`) made as iceberg-rust's builder makes them, with the metadata
-  log trimmed to `write.metadata.previous-versions-max`. Partition values of type uuid, fixed, and decimal are refused
+  log trimmed to `write.metadata.previous-versions-max`; the current snapshot can't be removed. Partition values of type uuid, fixed, and decimal are refused
   for now.
 - **Commits (feature `write`):** upload a snapshot's files, then write `v<N+1>.metadata.json` only if absent; on a
   lost race, reload and try again on the newer version, deleting the lost attempt's files; when the outcome is
   unknown (a conditional put that failed and can't be read back), delete nothing. Appends, replacements that keep data
-  sequence numbers (compaction), and deletions; manifests merge once there would be more than `merge_manifests_at`.
+  sequence numbers (compaction, one sequence number per added file), and deletions; manifests merge once there would be more than `merge_manifests_at`.
   Iceberg's summary counters are kept. A writer whose clock is behind the table's last update dates its commit at that
   update, so the snapshot log stays in order (iceberg-rust refuses tables whose log isn't).
 - **Options and hooks:** `CommitOptions` (`max_attempts` 10, `backoff_ms` 5–50 times the attempt, `merge_manifests_at`
@@ -54,7 +54,9 @@ shared writer, made general.
   summary properties of the application's own). Timelake's last-value index, batch ids, and head use them.
 - **Arrow (feature `arrow`):** the schema as an Arrow schema with field ids under `PARQUET:field_id`.
 - **Statistics (feature `parquet-stats`):** a data file's counts, bounds, and split offsets from its Parquet footer, as
-  iceberg-rust's writer records them; decimals stored as INT32 or INT64 become big-endian bounds.
+  iceberg-rust's writer records them; decimals become Iceberg's shortest big-endian bytes however Parquet stores them.
+  A bound or null count is recorded only when every row group gives it exactly (a row group of nulls only needs no
+  bounds): readers take them as covering the whole file, and a partial one would let them skip matching rows.
 - **Interop tests:** iceberg-rust creates a table and appends; lakebed reads it and commits; iceberg-rust reads that
   version, parses lakebed's manifests, and appends on top; lakebed reads all of it. lakebed's statistics of
   iceberg-rust's Parquet file equal what iceberg-rust recorded.
