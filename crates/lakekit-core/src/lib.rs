@@ -1,13 +1,15 @@
 //! The I/O boundary shared by lakekit's table format crates. Format crates do no I/O of their own:
 //! they read and write through a [`Store`] the application implements over its objects (an
-//! `object_store` client natively, `fetch` or an R2 binding in WebAssembly), and take the time and
-//! randomness from an [`Env`], so they build for `wasm32-unknown-unknown` and native targets alike.
+//! `object_store` client natively, `fetch` or an R2 binding in WebAssembly), and take the time from
+//! a [`Clock`] and random numbers from a [`Random`], so they build for `wasm32-unknown-unknown` and
+//! native targets alike.
 //!
 //! - [`Store`]: get, ranged get, put, put-if-absent (the commit primitive), multipart upload, list,
 //!   delete.
-//! - [`Env`]: the time, randomness, and waiting. `TokioEnv` (feature `tokio`) is a native one.
-//! - [`WithEnv`]: a store and an environment as one value, for APIs that need both.
-//! - [`MemoryStore`]: both, in memory, for tests.
+//! - [`Clock`]: the time and a timer. `TokioClock` (feature `tokio`) is a native one.
+//! - [`Random`]: random numbers. `OsRandom` (feature `getrandom`) is a native one.
+//! - [`Services`]: a store, a clock, and a random source as one value, for APIs that need all three.
+//! - [`MemoryStore`]: all three, in memory, for tests.
 //!
 //! ```
 //! use lakekit_core::{MemoryStore, Store};
@@ -26,16 +28,22 @@
 //! # }
 //! ```
 
-mod env;
+mod clock;
 mod error;
 mod ids;
 mod memory;
+mod random;
+mod services;
 mod store;
 
+pub use clock::Clock;
 #[cfg(all(feature = "tokio", not(target_arch = "wasm32")))]
-pub use env::TokioEnv;
-pub use env::{Env, WithEnv};
+pub use clock::TokioClock;
 pub use error::{Error, Result};
 pub use ids::{uuid_v4, uuid_v7};
 pub use memory::{MemoryStore, MemoryUpload};
+#[cfg(all(feature = "getrandom", not(target_arch = "wasm32")))]
+pub use random::OsRandom;
+pub use random::Random;
+pub use services::Services;
 pub use store::{Listed, Store, Upload};

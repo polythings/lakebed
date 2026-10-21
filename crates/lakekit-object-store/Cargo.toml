@@ -19,7 +19,7 @@ futures-util.workspace = true
 url.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-lakekit-core = { workspace = true, features = ["tokio"] }
+lakekit-core = { workspace = true, features = ["tokio", "getrandom"] }
 lakekit-iceberg = { workspace = true, features = ["write"] }
 object_store = { workspace = true, features = ["fs"] }
 tempfile = "3"

@@ -1,9 +1,9 @@
 # lakekit
 
 Table formats read and written without I/O of their own, in Rust, for WebAssembly and native targets. Each format's
-metadata (Apache Iceberg first) is parsed and written by plain code that asks a `Store` for bytes and an `Env` for the
-time and randomness: the application supplies both, so the same crate runs in a browser, a Cloudflare Worker, a CLI,
-or a server.
+metadata (Apache Iceberg first) is parsed and written by plain code that asks a `Store` for bytes, a `Clock` for the
+time, and a `Random` for random numbers: the application supplies them, so the same crate runs in a browser, a
+Cloudflare Worker, a CLI, or a server.
 
 lakekit is what [Timelake](https://github.com/polythings/timelake) and [lakeglass](https://github.com/polythings/lakeglass)
 share. The official Rust crates for these formats build on tokio and HTTP clients, which don't compile to
@@ -13,7 +13,7 @@ share. The official Rust crates for these formats build on tokio and HTTP client
 
 | Crate | What it does |
 |---|---|
-| [`lakekit-core`](crates/lakekit-core) | The `Store` trait (ranged reads, listing, conditional writes) and the `Env` trait (clock, randomness), errors, an in-memory store, a tokio environment |
+| [`lakekit-core`](crates/lakekit-core) | The `Store`, `Clock`, and `Random` traits, errors, an in-memory store, a tokio clock, OS randomness |
 | [`lakekit-iceberg`](crates/lakekit-iceberg) | Apache Iceberg: metadata, manifests, and commits |
 | [`lakekit-object-store`](crates/lakekit-object-store) | A `Store` over an `object_store` client: S3, GCS, Azure, local files, memory |
 | [`lakekit`](crates/lakekit) | Re-exports the crates, one feature each |
@@ -46,7 +46,8 @@ async fn files(s3: Arc<dyn object_store::ObjectStore>) -> lakekit_core::Result<u
 }
 ```
 
-Commits also need an `Env`: `WithEnv::new(store, TokioEnv)` natively, the application's own in WebAssembly.
+Commits also need a `Clock` and a `Random`: `Services::new(store, TokioClock, OsRandom)` natively, the application's
+own in WebAssembly.
 
 ## Development
 

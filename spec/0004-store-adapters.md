@@ -14,10 +14,10 @@ issues: [10]
 
 ## Summary
 
-Ready-made `Store`s ([spec 1](0001-store-env.md)) over the store libraries applications already use, so a native
-application doesn't write its own. Each adapter is a crate of its own; the `Store` trait stays the boundary, because
-some stores aren't these libraries (a Cloudflare R2 binding reached from JavaScript) and applications wrap their store
-(lakeglass counts every request).
+Ready-made `Store`s ([spec 1](0001-store-clock-random.md)) over the store libraries applications already use, so a
+native application doesn't write its own. Each adapter is a crate of its own; the `Store` trait stays the boundary,
+because some stores aren't these libraries (a Cloudflare R2 binding reached from JavaScript) and applications wrap
+their store (lakeglass counts every request).
 
 ## Design
 

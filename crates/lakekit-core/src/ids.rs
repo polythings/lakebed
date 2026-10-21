@@ -1,23 +1,23 @@
 use uuid::Builder;
 
-use crate::Env;
+use crate::{Clock, Random};
 
-/// A random UUID (version 4) from `env`'s randomness.
-pub fn uuid_v4(env: &impl Env) -> String {
+/// A random UUID (version 4) from `random`.
+pub fn uuid_v4(random: &impl Random) -> String {
     let mut bytes = [0u8; 16];
-    bytes[..8].copy_from_slice(&env.random().to_be_bytes());
-    bytes[8..].copy_from_slice(&env.random().to_be_bytes());
+    bytes[..8].copy_from_slice(&random.next_u64().to_be_bytes());
+    bytes[8..].copy_from_slice(&random.next_u64().to_be_bytes());
     Builder::from_random_bytes(bytes).into_uuid().to_string()
 }
 
-/// A time-ordered UUID (version 7) from `env`'s clock and randomness: names made with it sort by
-/// creation time.
-pub fn uuid_v7(env: &impl Env) -> String {
-    let millis = u64::try_from(env.now_ms()).unwrap_or(0);
-    let mut random = [0u8; 10];
-    random[..8].copy_from_slice(&env.random().to_be_bytes());
-    random[8..].copy_from_slice(&env.random().to_be_bytes()[..2]);
-    Builder::from_unix_timestamp_millis(millis, &random).into_uuid().to_string()
+/// A time-ordered UUID (version 7) from `source`'s clock and random numbers: names made with it
+/// sort by creation time.
+pub fn uuid_v7(source: &(impl Clock + Random)) -> String {
+    let millis = u64::try_from(source.now_ms()).unwrap_or(0);
+    let mut bytes = [0u8; 10];
+    bytes[..8].copy_from_slice(&source.next_u64().to_be_bytes());
+    bytes[8..].copy_from_slice(&source.next_u64().to_be_bytes()[..2]);
+    Builder::from_unix_timestamp_millis(millis, &bytes).into_uuid().to_string()
 }
 
 #[cfg(test)]
@@ -27,16 +27,16 @@ mod tests {
 
     #[test]
     fn uuids_are_well_formed() {
-        let env = MemoryStore::new(1_767_225_600_000);
-        let v4 = uuid_v4(&env);
-        let v7 = uuid_v7(&env);
+        let source = MemoryStore::new(1_767_225_600_000);
+        let v4 = uuid_v4(&source);
+        let v7 = uuid_v7(&source);
         for (u, version) in [(&v4, '4'), (&v7, '7')] {
             assert_eq!(u.len(), 36);
             assert_eq!(u.chars().nth(14), Some(version));
             assert!(matches!(u.chars().nth(19), Some('8' | '9' | 'a' | 'b')));
         }
         // Version 7 starts with the time, so later ones sort later.
-        env.advance(1);
-        assert!(uuid_v7(&env) > v7);
+        source.advance(1);
+        assert!(uuid_v7(&source) > v7);
     }
 }

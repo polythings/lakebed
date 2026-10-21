@@ -12,7 +12,7 @@ use std::future::Future;
 use std::hash::BuildHasher;
 use std::sync::Arc;
 
-use lakekit_core::{Env, Store, uuid_v4};
+use lakekit_core::{Clock, Random, Store, uuid_v4};
 
 use crate::manifest::{
     DataFile, Entry, ManifestContext, ManifestFile, ManifestWrite, Status, manifest_file, write_manifest,
@@ -125,7 +125,7 @@ pub struct Extra {
 }
 
 /// An application's part in a commit. Every method has a default that does nothing extra.
-pub trait CommitHooks<H: Store + Env> {
+pub trait CommitHooks<H: Store + Clock + Random> {
     /// The error the hooks (and so the commit) return.
     type Error: From<Error> + fmt::Debug;
 
@@ -156,13 +156,13 @@ pub trait CommitHooks<H: Store + Env> {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct NoHooks;
 
-impl<H: Store + Env> CommitHooks<H> for NoHooks {
+impl<H: Store + Clock + Random> CommitHooks<H> for NoHooks {
     type Error = Error;
 }
 
 /// Commits `change` on top of `base` (or the newest version, after a lost race), with `props` in
 /// the snapshot summary. The returned table knows its files when `base` did.
-pub async fn commit<H: Store + Env, K: CommitHooks<H>, S: BuildHasher>(
+pub async fn commit<H: Store + Clock + Random, K: CommitHooks<H>, S: BuildHasher>(
     store: &H,
     base: Table,
     change: &Change,
@@ -181,7 +181,7 @@ pub async fn commit<H: Store + Env, K: CommitHooks<H>, S: BuildHasher>(
     for attempt in 1..=options.max_attempts {
         if attempt > 1 {
             let (lo, hi) = options.backoff_ms;
-            store.sleep((lo + store.random() % hi.saturating_sub(lo).max(1)) * attempt).await;
+            store.sleep((lo + store.next_u64() % hi.saturating_sub(lo).max(1)) * attempt).await;
             base = hooks.reload(store, &base.location).await?;
         }
         if hooks.skip(&base) {
@@ -227,9 +227,9 @@ pub async fn put_metadata<S: Store>(store: &S, uri: &str, bytes: Vec<u8>) -> Res
 }
 
 /// A snapshot id not in the table yet.
-fn new_snapshot_id(env: &impl Env, base: &Table) -> i64 {
+fn new_snapshot_id(random: &impl Random, base: &Table) -> i64 {
     loop {
-        let id = i64::try_from(env.random() >> 1).unwrap_or(1).max(1);
+        let id = i64::try_from(random.next_u64() >> 1).unwrap_or(1).max(1);
         if !base.metadata.has_snapshot(id) {
             return id;
         }
@@ -239,7 +239,7 @@ fn new_snapshot_id(env: &impl Env, base: &Table) -> i64 {
 /// One attempt: writes the snapshot's files and publishes it. `None` if another writer committed
 /// this version first (this attempt's files are deleted). With an unknown outcome, nothing is
 /// deleted.
-async fn attempt_commit<H: Store + Env, K: CommitHooks<H>, S: BuildHasher>(
+async fn attempt_commit<H: Store + Clock + Random, K: CommitHooks<H>, S: BuildHasher>(
     store: &H,
     base: &Table,
     change: &Change,
@@ -329,7 +329,7 @@ async fn delete_uploads(store: &impl Store, uploads: Vec<(String, Vec<u8>)>) {
 
 /// Writes a manifest of the added files, carries the base snapshot's manifests over, and rewrites
 /// the ones holding removed files (or all of them once there are too many).
-async fn write_manifests<H: Store + Env>(
+async fn write_manifests<H: Store + Clock + Random>(
     store: &H,
     base: &Table,
     change: &Change,

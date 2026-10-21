@@ -41,6 +41,7 @@ jobs:
           cargo check -p lakekit-iceberg --features parquet-stats
           cargo check -p lakekit-core --no-default-features
           cargo check -p lakekit-core --features tokio
+          cargo check -p lakekit-core --features getrandom
           cargo check -p lakekit-object-store
 
   wasm:

@@ -7,8 +7,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- `lakekit-core`: the `Store` trait for objects and the `Env` trait for the clock, randomness, and waiting;
-  `WithEnv` to pass both as one; `MemoryStore`; `TokioEnv` (feature `tokio`); one `Error` type.
+- `lakekit-core`: the `Store`, `Clock`, and `Random` traits; `Services` to pass the three as one; `MemoryStore`;
+  `TokioClock` (feature `tokio`) and `OsRandom` (feature `getrandom`); one `Error` type.
 - `lakekit-object-store`: a `Store` over an `object_store` client (S3, GCS, Azure, local files, memory), from a client
   or a URL.
 - `lakekit-iceberg`: Iceberg table metadata, schemas, partition specs, manifest lists, and manifests read for format
@@ -26,7 +26,7 @@ versions follow [Semantic Versioning](https://semver.org/).
 - The project is named lakekit, and its crates `lakekit-core`, `lakekit-iceberg`, and `lakekit`; it was lakebed
   (`lakebed-core`, …) until 2026-10-21. Nothing was published under the old names; GitHub redirects the old
   repository URL.
-- The I/O boundary is two traits, `Store` (objects) and `Env` (clock, randomness, waiting), instead of one `Host`;
-  `MemoryHost` is `MemoryStore`. UUIDs come from the `uuid` crate.
+- The I/O boundary is three traits, `Store` (objects), `Clock` (the time and a timer), and `Random` (random numbers),
+  instead of one `Host`; `MemoryHost` is `MemoryStore`. UUIDs come from the `uuid` crate.
 
 The Iceberg code started as Timelake's shared writer (`timelake-format`), made general.

@@ -1,6 +1,7 @@
 //! Apache Iceberg table metadata, manifests and commits, with no I/O of its own: everything is read
 //! and written through a [`Store`](lakekit_core::Store) the application supplies, and commits take
-//! the time and randomness from an [`Env`](lakekit_core::Env), so the crate builds for
+//! the time from a [`Clock`](lakekit_core::Clock) and random numbers from a
+//! [`Random`](lakekit_core::Random), so the crate builds for
 //! `wasm32-unknown-unknown` (browsers, Cloudflare Workers) as well as native targets.
 //!
 //! - Reading (always): table metadata of format versions 1 to 3 ([`Metadata`]), schemas and

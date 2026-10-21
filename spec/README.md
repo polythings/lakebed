@@ -28,11 +28,11 @@ lakekit's design, laid out like Timelake's and lakeglass's. Start here, people a
 
 ## Index
 
-4 specs: 3 in progress, 1 done. Decisions D1–D12.
+4 specs: 3 in progress, 1 done. Decisions D1–D13.
 
 | # | Spec | Status | Updated |
 |---:|---|---|---|
-| 1 | [Store and environment](0001-store-env.md) | Done | 2026-10-21 |
+| 1 | [Store, Clock, and Random](0001-store-clock-random.md) | Done | 2026-10-21 |
 | 2 | [One crate per format](0002-formats.md) | In progress | 2026-10-21 |
 | 3 | [Apache Iceberg](0003-iceberg.md) | In progress | 2026-10-20 |
 | 4 | [Store adapters](0004-store-adapters.md) | In progress | 2026-10-21 |

@@ -2,10 +2,10 @@ use std::collections::BTreeMap;
 use std::future::{Future, ready};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use crate::{Env, Error, Listed, Result, Store, Upload};
+use crate::{Clock, Error, Listed, Random, Result, Store, Upload};
 
-/// A [`Store`] in memory that is also an [`Env`] with a clock that moves only when told (or when
-/// `sleep` is called) and a seeded random sequence: for tests and examples. Clones share the same
+/// A [`Store`] in memory that is also a [`Clock`] that moves only when told (or when `sleep` is
+/// called) and a [`Random`] with a seeded sequence: for tests and examples. Clones share the same
 /// objects.
 #[derive(Clone, Debug, Default)]
 pub struct MemoryStore {
@@ -122,20 +122,22 @@ impl Store for MemoryStore {
     }
 }
 
-impl Env for MemoryStore {
+impl Clock for MemoryStore {
     fn now_ms(&self) -> i64 {
         *lock(&self.clock)
-    }
-
-    fn random(&self) -> u64 {
-        // A linear congruential generator (Knuth's MMIX constants), with the high bits folded in.
-        let mut seed = lock(&self.seed);
-        *seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
-        *seed ^ (*seed >> 29)
     }
 
     fn sleep(&self, ms: u64) -> impl Future<Output = ()> {
         self.advance(i64::try_from(ms).unwrap_or(i64::MAX));
         ready(())
+    }
+}
+
+impl Random for MemoryStore {
+    fn next_u64(&self) -> u64 {
+        // A linear congruential generator (Knuth's MMIX constants), with the high bits folded in.
+        let mut seed = lock(&self.seed);
+        *seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+        *seed ^ (*seed >> 29)
     }
 }

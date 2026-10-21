@@ -21,7 +21,7 @@ use iceberg::spec::{
 use iceberg::transaction::{ApplyTransactionAction, Transaction};
 use iceberg::writer::file_writer::{FileWriter as _, FileWriterBuilder, ParquetWriterBuilder};
 use iceberg::{Catalog, CatalogBuilder, MemoryCatalog, NamespaceIdent, TableCreation, TableIdent};
-use lakekit_core::{Error, Listed, MemoryStore, MemoryUpload, Store, WithEnv};
+use lakekit_core::{Error, Listed, MemoryStore, MemoryUpload, Services, Store};
 use lakekit_iceberg::stats::ParquetStats;
 use lakekit_iceberg::{Change, CommitOptions, DataFile, Datum, Entry, NoHooks, Status, Table, commit};
 use parquet::arrow::ArrowWriter;
@@ -38,8 +38,8 @@ struct IoStore {
     io: FileIO,
 }
 
-/// The store with a [`MemoryStore`]'s clock and randomness.
-type TestStore = WithEnv<IoStore, MemoryStore>;
+/// The store with a [`MemoryStore`]'s clock and random numbers.
+type TestStore = Services<IoStore, MemoryStore, MemoryStore>;
 
 fn store(e: impl std::fmt::Display) -> Error {
     Error::Store(e.to_string())
@@ -228,7 +228,8 @@ async fn tables_round_trip_between_lakekit_and_iceberg_rust() {
         Some(UnboundPartitionSpec::builder().add_partition_field(1, "time_day", IceTransform::Day).unwrap().build());
     let table = catalog.create_table(&ns, creation).await.unwrap();
     let io = table.file_io().clone();
-    let store = WithEnv::new(IoStore { io: io.clone() }, MemoryStore::new(T0 / 1000));
+    let memory = MemoryStore::new(T0 / 1000);
+    let store = Services::new(IoStore { io: io.clone() }, memory.clone(), memory);
     let arrow = Arc::new(iceberg::arrow::schema_to_arrow_schema(table.metadata().current_schema()).unwrap());
 
     // iceberg-rust appends; lakekit reads the file as iceberg-rust records it.

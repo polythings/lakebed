@@ -22,8 +22,10 @@ iceberg-arrow = ["iceberg", "lakekit-iceberg/arrow"]
 iceberg-parquet-stats = ["iceberg", "lakekit-iceberg/parquet-stats"]
 # A store over an object_store client (lakekit-object-store).
 object-store = ["dep:lakekit-object-store"]
-# TokioEnv, a native environment (lakekit-core/tokio).
+# TokioClock, a native clock (lakekit-core/tokio).
 tokio = ["lakekit-core/tokio"]
+# OsRandom, the operating system's random numbers (lakekit-core/getrandom).
+getrandom = ["lakekit-core/getrandom"]
 
 [dependencies]
 lakekit-core.workspace = true

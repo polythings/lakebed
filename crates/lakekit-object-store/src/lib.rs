@@ -179,7 +179,7 @@ impl Store for ObjectStoreAdapter {
 mod tests {
     use std::collections::HashMap;
 
-    use lakekit_core::{TokioEnv, WithEnv};
+    use lakekit_core::{OsRandom, Services, TokioClock};
     use lakekit_iceberg::{Change, CommitOptions, DataFile, Datum, Metadata, NoHooks, Table, commit};
     use object_store::memory::InMemory;
 
@@ -248,7 +248,7 @@ mod tests {
     /// An Iceberg table committed and read back through `object_store`.
     #[tokio::test]
     async fn iceberg_commits_through_object_store() {
-        let store = WithEnv::new(adapter(), TokioEnv);
+        let store = Services::new(adapter(), TokioClock, OsRandom);
         let location = "memory://warehouse/t";
         let metadata = Metadata::parse(
             br#"{"format-version": 2, "table-uuid": "u", "location": "memory://warehouse/t", "last-sequence-number": 0,
