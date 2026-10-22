@@ -3,14 +3,14 @@ number: 1
 title: Store, Clock, and Random
 status: done
 updated: 2026-10-21
-versions: [unreleased]
+versions: [0.1.0]
 related: [2, 3, 4]
 issues: []
 ---
 
 # 1. Store, Clock, and Random
 
-**Done** · updated 2026-10-21 · versions unreleased · milestone: [0.1](milestones/v0-1.md)
+**Done** · updated 2026-10-21 · versions 0.1.0 · milestone: [0.1](milestones/v0-1.md)
 
 ## Summary
 
@@ -78,3 +78,4 @@ None open.
   again.
 - 2026-10-21: `Services` is three references with named fields, and commits and hooks take it instead of one value that
   is all three (D16); `MemoryServices` is gone, and `uuid_v7` takes a clock and a random source.
+- 2026-10-22: released in 0.1.0.

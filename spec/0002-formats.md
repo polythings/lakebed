@@ -3,14 +3,14 @@ number: 2
 title: One crate per format
 status: in-progress
 updated: 2026-10-21
-versions: [unreleased]
+versions: [0.1.0]
 related: [1, 3, 4]
 issues: [6, 11]
 ---
 
 # 2. One crate per format
 
-**In progress** · updated 2026-10-21 · versions unreleased · milestone: [0.1](milestones/v0-1.md)
+**In progress** · updated 2026-10-21 · versions 0.1.0 · milestone: [0.1](milestones/v0-1.md)
 
 ## Summary
 
@@ -53,3 +53,4 @@ lakeglass reads it; the formats lakeglass explores come next.
 - 2026-10-20: proposed and the layout built, with Iceberg as the first format.
 - 2026-10-21: the project renamed from lakebed to lakekit, an easier name to read; crates `lakekit-core`,
   `lakekit-iceberg`, and `lakekit`.
+- 2026-10-22: released in 0.1.0.

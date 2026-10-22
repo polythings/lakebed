@@ -3,14 +3,14 @@ number: 3
 title: Apache Iceberg
 status: in-progress
 updated: 2026-10-20
-versions: [unreleased]
+versions: [0.1.0]
 related: [1, 2]
 issues: [1, 2, 3, 4, 5]
 ---
 
 # 3. Apache Iceberg
 
-**In progress** · updated 2026-10-20 · versions unreleased · milestone: [0.1](milestones/v0-1.md)
+**In progress** · updated 2026-10-20 · versions 0.1.0 · milestone: [0.1](milestones/v0-1.md)
 
 ## Summary
 
@@ -84,3 +84,4 @@ files, and catalogs (REST). Each has an issue.
 
 - 2026-10-20: built from Timelake's shared writer (`timelake-format`), made general: any partition spec, format v1 to
   v3 reads, delete files, hooks, and options.
+- 2026-10-22: released in 0.1.0.
