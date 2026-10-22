@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.1.0 (2026-10-22)
+
 ### Added
 
 - `lakekit-core`: loko's `Store`, `Clock`, and `Random` services with their test and native implementations

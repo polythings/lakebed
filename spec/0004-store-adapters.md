@@ -3,14 +3,14 @@ number: 4
 title: Store adapters
 status: done
 updated: 2026-10-21
-versions: [unreleased]
+versions: [0.1.0]
 related: [1]
 issues: []
 ---
 
 # 4. Store adapters
 
-**Done** · updated 2026-10-21 · versions unreleased · milestone: [0.1](milestones/v0-1.md)
+**Done** · updated 2026-10-21 · versions 0.1.0 · milestone: [0.1](milestones/v0-1.md)
 
 ## Summary
 
@@ -58,3 +58,4 @@ None open here. The OpenDAL adapter is [loko#6](https://github.com/polythings/lo
 
 - 2026-10-21: proposed, and `lakekit-object-store` built.
 - 2026-10-21: the adapter moved to loko as `loko-object-store` (D15); the OpenDAL issue moved with it.
+- 2026-10-22: released in 0.1.0.
